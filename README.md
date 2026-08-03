@@ -1,8 +1,9 @@
 # JellyfinProxy
 
-An asynchronous FastAPI reverse proxy that transparently forwards Jellyfin traffic and applies policy decisions to URLs already resolved by Jellyfin in PlaybackInfo responses.
+JellyfinProxy 是一个基于 FastAPI 的异步反向代理。它会透明转发 Jellyfin
+流量，并对 Jellyfin 已在 `PlaybackInfo` 响应中解析出的媒体 URL 应用策略。
 
-## Run
+## 源码运行
 
 ```bash
 cd /opt/mediawarp
@@ -11,64 +12,84 @@ python3.11 -m venv .venv
 .venv/bin/python main.py --config JellyfinProxy.toml
 ```
 
-Configuration is provided through the environment; see `.env.example`. `BYPASS_CLIENTS` is a comma-separated, case-insensitive substring list checked against `User-Agent`, `X-Emby-Client`, and `X-Emby-Device-Name`.
+程序主要通过 `JellyfinProxy.toml` 读取配置，也可以使用环境变量覆盖配置项，
+环境变量示例见 `.env.example`。
 
-`LOG_LEVEL` controls application logging and defaults to `INFO`. Each request receives
-an `X-Request-ID` response header; an incoming `X-Request-ID` is preserved so related
-request, upstream, and playback-policy log entries can be correlated. Query strings,
-request bodies, and authentication headers are not logged.
-`LOG_FILE` selects a rotating log file and defaults to `JellyfinProxy.log` in the working
-directory. Files rotate at 10 MiB and five backups are retained.
+`BYPASS_CLIENTS` 是以英文逗号分隔的客户端列表。程序会忽略大小写，在
+`User-Agent`、`X-Emby-Client` 和 `X-Emby-Device-Name` 请求头中进行
+子字符串匹配。匹配成功的客户端将绕过所有播放信息修改，直接代理到 Jellyfin。
 
-The proxy never opens STRM files. Jellyfin remains responsible for resolving media metadata and STRM content; JellyfinProxy only analyzes the resulting HTTP(S) `MediaSources[].Path` and applies configured policy rules.
+`LOG_LEVEL` 控制日志级别，默认为 `INFO`。程序会为每个请求返回
+`X-Request-ID` 响应头；如果请求已经携带合法的 `X-Request-ID`，程序会保留
+该值，以便关联请求、上游访问和播放策略日志。日志不会记录查询参数、请求体或
+认证请求头。
 
-## Versioning
+`LOG_FILE` 用于指定轮转日志文件，默认是在配置文件所在目录创建
+`JellyfinProxy.log`。单个日志文件达到 10 MiB 后自动轮转，最多保留 5 个备份。
+将 `LOG_FILE` 设置为空字符串可以关闭文件日志，只输出到标准输出。
 
-JellyfinProxy follows Semantic Versioning. The current version is defined once in
-`version.py`, appears in startup logs and the `X-JellyfinProxy-Version` response header,
-and can be printed without starting the server:
+代理不会打开或读取 STRM 文件。媒体元数据和 STRM 内容仍由 Jellyfin 负责
+解析；JellyfinProxy 只分析 Jellyfin 返回的 HTTP(S)
+`MediaSources[].Path`，并应用已配置的策略规则。
+
+## 版本管理
+
+JellyfinProxy 遵循语义化版本规范。当前版本统一定义在 `version.py` 中，并会
+显示在启动日志和 `X-JellyfinProxy-Version` 响应头中。不启动服务器也可以查询
+版本：
 
 ```bash
 .venv/bin/python main.py --version
 ```
 
-Release changes are documented in `CHANGELOG.md`.
+每个版本的变更记录保存在 `CHANGELOG.md` 中。
 
-## Standalone binary
+## 独立二进制
 
-The release can be distributed as two files: the `JellyfinProxy` Linux executable and
-the adjacent `JellyfinProxy.toml` configuration. Start it with:
+程序可以使用两个文件独立部署：Linux 可执行文件 `JellyfinProxy` 和放在其旁边
+的配置文件 `JellyfinProxy.toml`。
+
+启动命令：
 
 ```bash
 ./JellyfinProxy --config ./JellyfinProxy.toml
 ```
 
-Relative `log_file` paths are resolved from the configuration file directory.
-Environment variables remain available as optional overrides.
+`log_file` 使用相对路径时，会相对于配置文件所在目录进行解析。环境变量仍可用于
+覆盖文件中的配置。
 
-Build the executable on the target Linux architecture with:
+在目标 Linux 架构上构建可执行文件：
 
 ```bash
 .venv/bin/pip install -r requirements-build.txt
 .venv/bin/pyinstaller --noconfirm --clean JellyfinProxy.spec
 ```
 
-The executable is written to `dist/JellyfinProxy`. PyInstaller executables are
-platform-specific, so Linux and CPU architectures must be built separately.
+构建结果位于 `dist/JellyfinProxy`。PyInstaller 生成的可执行文件与操作系统和
+CPU 架构相关，因此不同平台需要分别构建。
 
 ## Docker Compose
 
-The included Compose configuration uses host networking so the default
-`http://127.0.0.1:8096` upstream reaches Jellyfin published on the host:
+项目提供的 Compose 配置使用宿主网络模式，使默认上游地址
+`http://127.0.0.1:8096` 可以访问宿主机上已发布端口的 Jellyfin：
 
 ```bash
+cd /opt/mediawarp
 docker compose up -d --build
 docker compose ps
 docker compose logs -f jellyfinproxy
 ```
 
-Edit `JellyfinProxy.toml` before starting. In Compose, `LOG_FILE` is empty so logs
-are written only to stdout and handled by Docker. Stop the service with:
+启动前请编辑 `JellyfinProxy.toml`。Compose 配置将 `LOG_FILE` 设置为空，日志
+只写入标准输出并由 Docker 管理。
+
+重启服务：
+
+```bash
+docker compose restart jellyfinproxy
+```
+
+停止并删除容器：
 
 ```bash
 docker compose down
