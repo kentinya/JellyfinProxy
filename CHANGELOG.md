@@ -7,6 +7,12 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## 0.4.0 - 2026-08-03
+
+- Added Docker image and Docker Compose deployment support.
+- Added stdout-only logging mode for container runtimes.
+- Added a container health check and restart policy.
+
 ## 0.3.0 - 2026-08-03
 
 - Renamed the application, executable, configuration, logs, and response header

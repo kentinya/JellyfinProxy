@@ -55,3 +55,21 @@ Build the executable on the target Linux architecture with:
 
 The executable is written to `dist/JellyfinProxy`. PyInstaller executables are
 platform-specific, so Linux and CPU architectures must be built separately.
+
+## Docker Compose
+
+The included Compose configuration uses host networking so the default
+`http://127.0.0.1:8096` upstream reaches Jellyfin published on the host:
+
+```bash
+docker compose up -d --build
+docker compose ps
+docker compose logs -f jellyfinproxy
+```
+
+Edit `JellyfinProxy.toml` before starting. In Compose, `LOG_FILE` is empty so logs
+are written only to stdout and handled by Docker. Stop the service with:
+
+```bash
+docker compose down
+```

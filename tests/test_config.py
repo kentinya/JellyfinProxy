@@ -39,3 +39,10 @@ def test_missing_config_has_clear_error(tmp_path: Path) -> None:
         assert "Configuration file not found" in str(exc)
     else:
         raise AssertionError("missing configuration should fail")
+
+
+def test_empty_log_file_disables_file_logging(tmp_path: Path, monkeypatch) -> None:
+    config_file = tmp_path / "JellyfinProxy.toml"
+    config_file.write_text('log_file = "JellyfinProxy.log"', encoding="utf-8")
+    monkeypatch.setenv("LOG_FILE", "")
+    assert Settings.from_file(config_file).log_file == ""

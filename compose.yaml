@@ -1,0 +1,27 @@
+services:
+  jellyfinproxy:
+    container_name: JellyfinProxy
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jellyfinproxy:0.4.0
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      # Empty means stdout only; view logs with `docker compose logs`.
+      LOG_FILE: ""
+    volumes:
+      - ./JellyfinProxy.toml:/config/JellyfinProxy.toml:ro
+    command: ["--config", "/config/JellyfinProxy.toml"]
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8097/System/Info/Public', timeout=5)
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

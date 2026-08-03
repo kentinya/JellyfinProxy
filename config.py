@@ -70,10 +70,14 @@ class Settings:
         except tomllib.TOMLDecodeError as exc:
             raise ValueError(f"Invalid TOML configuration: {exc}") from exc
 
-        log_file = os.getenv("LOG_FILE", str(values.get("log_file", "JellyfinProxy.log")))
-        log_path = Path(log_file).expanduser()
-        if not log_path.is_absolute():
-            log_path = config_path.parent / log_path
+        log_file = os.getenv("LOG_FILE", str(values.get("log_file", "JellyfinProxy.log"))).strip()
+        if log_file:
+            log_path = Path(log_file).expanduser()
+            if not log_path.is_absolute():
+                log_path = config_path.parent / log_path
+            resolved_log_file = str(log_path)
+        else:
+            resolved_log_file = ""
 
         bypass_value: Any = os.getenv("BYPASS_CLIENTS")
         if bypass_value is None:
@@ -94,7 +98,7 @@ class Settings:
                 )
             ),
             log_level=os.getenv("LOG_LEVEL", str(values.get("log_level", "INFO"))),
-            log_file=str(log_path),
+            log_file=resolved_log_file,
         )
 
 
