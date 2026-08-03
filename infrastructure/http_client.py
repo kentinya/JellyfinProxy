@@ -41,8 +41,13 @@ class JellyfinHttpClient:
         headers = {
             name: value
             for name, value in request.headers.items()
-            if name.lower() not in HOP_BY_HOP_HEADERS | {"host", "content-length"}
+            # The proxy buffers decoded response bodies. Request an identity
+            # representation so optional encodings such as Brotli can never be
+            # forwarded without their Content-Encoding header.
+            if name.lower()
+            not in HOP_BY_HOP_HEADERS | {"host", "content-length", "accept-encoding"}
         }
+        headers["accept-encoding"] = "identity"
         if request.client:
             prior = request.headers.get("x-forwarded-for")
             headers["x-forwarded-for"] = f"{prior}, {request.client.host}" if prior else request.client.host

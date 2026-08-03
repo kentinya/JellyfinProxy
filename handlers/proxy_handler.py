@@ -12,7 +12,14 @@ def response_headers(upstream: httpx.Response, *, content_changed: bool = False)
     # httpx exposes decoded ``response.content``. Its original encoding and
     # length therefore never describe the body emitted by this application.
     del content_changed
-    excluded = HOP_BY_HOP_HEADERS | {"content-length", "content-encoding"}
+    # Starlette/Uvicorn supplies Date and Server itself. Keeping the upstream
+    # copies would produce duplicate response headers at the outer Nginx proxy.
+    excluded = HOP_BY_HOP_HEADERS | {
+        "content-length",
+        "content-encoding",
+        "date",
+        "server",
+    }
     return {name: value for name, value in upstream.headers.items() if name.lower() not in excluded}
 
 

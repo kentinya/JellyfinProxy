@@ -7,6 +7,11 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## 0.4.1 - 2026-08-03
+
+- Fixed corrupted browser assets when Jellyfin selected Brotli compression.
+- Removed duplicate upstream `Date` and `Server` response headers.
+
 ## 0.4.0 - 2026-08-03
 
 - Added Docker image and Docker Compose deployment support.

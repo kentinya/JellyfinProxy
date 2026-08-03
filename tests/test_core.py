@@ -137,10 +137,18 @@ def test_protocol_file_rule_disables_transcoding() -> None:
 def test_decoded_upstream_body_drops_stale_encoding_headers() -> None:
     upstream = httpx.Response(
         200,
-        headers={"Content-Encoding": "gzip", "Content-Length": "100", "X-Test": "kept"},
+        headers={
+            "Content-Encoding": "gzip",
+            "Content-Length": "100",
+            "Date": "Mon, 03 Aug 2026 00:00:00 GMT",
+            "Server": "Kestrel",
+            "X-Test": "kept",
+        },
         content=gzip.compress(b"decoded body"),
     )
     headers = response_headers(upstream)
     assert "content-encoding" not in headers
     assert "content-length" not in headers
+    assert "date" not in headers
+    assert "server" not in headers
     assert headers["x-test"] == "kept"
