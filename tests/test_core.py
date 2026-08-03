@@ -7,7 +7,7 @@ import httpx
 from fastapi import Request, Response
 
 from handlers.video_handler import VideoHandler
-from handlers.proxy_handler import response_headers
+from handlers.proxy_handler import ProxyHandler, response_headers, streaming_response_headers
 from policies.client_policy import ClientPolicy
 from routers.route_config import HandlerType
 from routers.router import Router
@@ -211,3 +211,73 @@ def test_decoded_upstream_body_drops_stale_encoding_headers() -> None:
     assert "date" not in headers
     assert "server" not in headers
     assert headers["x-test"] == "kept"
+
+
+def test_streaming_headers_preserve_range_and_representation_metadata() -> None:
+    upstream = httpx.Response(
+        206,
+        headers={
+            "Content-Length": "4",
+            "Content-Range": "bytes 0-3/100",
+            "Accept-Ranges": "bytes",
+            "Content-Encoding": "gzip",
+            "Transfer-Encoding": "chunked",
+            "Server": "Kestrel",
+        },
+    )
+
+    headers = streaming_response_headers(upstream)
+
+    assert headers["content-length"] == "4"
+    assert headers["content-range"] == "bytes 0-3/100"
+    assert headers["accept-ranges"] == "bytes"
+    assert headers["content-encoding"] == "gzip"
+    assert "transfer-encoding" not in headers
+    assert "server" not in headers
+
+
+def test_proxy_handler_streams_and_closes_upstream_response() -> None:
+    class ChunkStream(httpx.AsyncByteStream):
+        def __init__(self) -> None:
+            self.closed = False
+
+        async def __aiter__(self):
+            yield b"ab"
+            yield b"cd"
+
+        async def aclose(self) -> None:
+            self.closed = True
+
+    stream = ChunkStream()
+    upstream = httpx.Response(
+        206,
+        headers={"Content-Length": "4", "Content-Range": "bytes 0-3/100"},
+        stream=stream,
+    )
+
+    class StreamingClient:
+        async def forward_stream(self, request: Request) -> httpx.Response:
+            assert request.headers["range"] == "bytes=0-3"
+            return upstream
+
+    request = Request({
+        "type": "http",
+        "method": "GET",
+        "scheme": "http",
+        "server": ("proxy", 8097),
+        "path": "/videos/item/stream.mkv",
+        "query_string": b"",
+        "headers": [(b"range", b"bytes=0-3")],
+    })
+
+    async def consume() -> tuple[Response, bytes]:
+        response = await ProxyHandler(StreamingClient()).handle(request)  # type: ignore[arg-type]
+        assert not upstream.is_stream_consumed
+        body = b"".join([chunk async for chunk in response.body_iterator])  # type: ignore[attr-defined]
+        return response, body
+
+    response, body = asyncio.run(consume())
+    assert response.status_code == 206
+    assert response.headers["content-range"] == "bytes 0-3/100"
+    assert body == b"abcd"
+    assert stream.closed

@@ -42,6 +42,9 @@ python3.11 -m venv .venv
 请求携带匹配的 `MediaSourceId` 时，将返回 `302` 重定向至该 Path；缓存未命中或
 Path 不是 HTTP(S) URL 时仍透明代理到 Jellyfin。
 
+透明代理响应采用异步流式传输，不会把完整视频加载到内存；Range、Content-Range、
+Content-Length 和 Content-Encoding 等媒体响应头会原样保留。
+
 ## 版本管理
 
 JellyfinProxy 遵循语义化版本规范。当前版本统一定义在 `version.py` 中，并会

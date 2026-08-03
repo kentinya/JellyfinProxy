@@ -31,7 +31,7 @@ class JellyfinHttpClient:
     async def close(self) -> None:
         await self._client.aclose()
 
-    async def forward(self, request: Request) -> httpx.Response:
+    async def _build_request(self, request: Request) -> httpx.Request:
         raw_path = request.scope.get("raw_path", request.url.path.encode("utf-8")).decode("latin-1")
         query = request.scope.get("query_string", b"").decode("latin-1")
         target_url = f"{self._base_url}{raw_path}"
@@ -54,13 +54,19 @@ class JellyfinHttpClient:
         headers["x-forwarded-proto"] = request.url.scheme
         headers["x-forwarded-host"] = request.headers.get("host", "")
 
+        return self._client.build_request(
+            method=request.method,
+            url=target_url,
+            headers=headers,
+            content=await request.body(),
+        )
+
+    async def _send(self, request: Request, *, stream: bool) -> httpx.Response:
         started = perf_counter()
         try:
-            response = await self._client.request(
-                method=request.method,
-                url=target_url,
-                headers=headers,
-                content=await request.body(),
+            response = await self._client.send(
+                await self._build_request(request),
+                stream=stream,
             )
         except httpx.HTTPError:
             logger.exception(
@@ -79,3 +85,9 @@ class JellyfinHttpClient:
             (perf_counter() - started) * 1000,
         )
         return response
+
+    async def forward(self, request: Request) -> httpx.Response:
+        return await self._send(request, stream=False)
+
+    async def forward_stream(self, request: Request) -> httpx.Response:
+        return await self._send(request, stream=True)

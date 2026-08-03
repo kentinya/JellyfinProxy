@@ -7,6 +7,13 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## 0.7.0 - 2026-08-03
+
+- Changed transparent proxy responses to asynchronous streaming so large video
+  files are no longer buffered in memory.
+- Preserved Range and representation metadata while streaming, and ensured
+  upstream responses close on completion or client disconnect.
+
 ## 0.6.0 - 2026-08-03
 
 - Added direct video redirects from `/videos/{id}/...` requests to the cached
