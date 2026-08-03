@@ -6,7 +6,8 @@ from pathlib import Path
 from fastapi import Request
 
 from infrastructure.logging import bind_request_id, configure_logging, reset_request_id
-from main import _request_id
+from config import Settings
+from main import _request_id, create_app
 
 
 def test_log_records_include_bound_request_id(capsys) -> None:
@@ -54,3 +55,8 @@ def test_request_id_preserves_safe_values_and_replaces_unsafe_values() -> None:
     generated = _request_id(_request_with_id("unsafe id"))
     assert generated != "unsafe id"
     assert len(generated) == 32
+
+
+def test_response_middleware_version_uses_configured_app() -> None:
+    app = create_app(Settings.from_env())
+    assert app.version

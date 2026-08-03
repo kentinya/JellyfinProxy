@@ -13,7 +13,7 @@ from uuid import uuid4
 import uvicorn
 from fastapi import FastAPI, Request, Response
 
-from config import settings
+from config import Settings, default_config_path
 from handlers.dispatcher import Dispatcher
 from infrastructure.http_client import JellyfinHttpClient
 from infrastructure.logging import bind_request_id, configure_logging, reset_request_id
@@ -25,7 +25,6 @@ from services.playback_service import PlaybackService
 from version import __version__
 
 
-configure_logging(settings.log_level, settings.log_file)
 logger = logging.getLogger(__name__)
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 
@@ -35,7 +34,7 @@ def _request_id(request: Request) -> str:
     return supplied if REQUEST_ID_PATTERN.fullmatch(supplied) else uuid4().hex
 
 
-def create_app() -> FastAPI:
+def create_app(settings: Settings) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         http_client = JellyfinHttpClient(
@@ -109,17 +108,37 @@ def create_app() -> FastAPI:
     return app
 
 
-app = create_app()
+def _argument_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="MediaWarp Jellyfin middleware proxy")
+    parser.add_argument(
+        "--config",
+        default=str(default_config_path()),
+        help="path to the TOML configuration file",
+    )
+    parser.add_argument("--version", action="version", version=f"MediaWarp {__version__}")
+    return parser
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="MediaWarp Jellyfin middleware proxy")
-    parser.add_argument("--version", action="version", version=f"MediaWarp {__version__}")
-    parser.parse_args()
+    arguments = _argument_parser().parse_args()
+    try:
+        runtime_settings = Settings.from_file(arguments.config)
+    except ValueError as exc:
+        _argument_parser().error(str(exc))
+else:
+    # Preserve compatibility for ASGI servers importing ``main:app``.
+    candidate = default_config_path()
+    runtime_settings = Settings.from_file(candidate) if candidate.exists() else Settings.from_env()
+
+configure_logging(runtime_settings.log_level, runtime_settings.log_file)
+app = create_app(runtime_settings)
+
+
+if __name__ == "__main__":
     uvicorn.run(
-        "main:app",
-        host=settings.listen_host,
-        port=settings.listen_port,
+        app,
+        host=runtime_settings.listen_host,
+        port=runtime_settings.listen_port,
         reload=False,
         log_config=None,
         access_log=False,

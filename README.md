@@ -8,7 +8,7 @@ An asynchronous FastAPI reverse proxy that transparently forwards Jellyfin traff
 cd /opt/mediawarp
 python3.11 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-JELLYFIN_URL=http://jellyfin:8096 .venv/bin/python main.py
+.venv/bin/python main.py --config mediawarp.toml
 ```
 
 Configuration is provided through the environment; see `.env.example`. `BYPASS_CLIENTS` is a comma-separated, case-insensitive substring list checked against `User-Agent`, `X-Emby-Client`, and `X-Emby-Device-Name`.
@@ -33,3 +33,25 @@ and can be printed without starting the server:
 ```
 
 Release changes are documented in `CHANGELOG.md`.
+
+## Standalone binary
+
+The release can be distributed as two files: the `mediawarp` Linux executable and
+the adjacent `mediawarp.toml` configuration. Start it with:
+
+```bash
+./mediawarp --config ./mediawarp.toml
+```
+
+Relative `log_file` paths are resolved from the configuration file directory.
+Environment variables remain available as optional overrides.
+
+Build the executable on the target Linux architecture with:
+
+```bash
+.venv/bin/pip install -r requirements-build.txt
+.venv/bin/pyinstaller --noconfirm --clean mediawarp.spec
+```
+
+The executable is written to `dist/mediawarp`. PyInstaller executables are
+platform-specific, so Linux and CPU architectures must be built separately.

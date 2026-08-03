@@ -1,0 +1,9 @@
+# MediaWarp runtime configuration
+jellyfin_url = "http://127.0.0.1:8096"
+listen_host = "0.0.0.0"
+listen_port = 8097
+bypass_clients = ["Infuse", "Kodi"]
+debug = false
+request_timeout_seconds = 60
+log_level = "INFO"
+log_file = "mediawarp.log"
