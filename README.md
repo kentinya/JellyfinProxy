@@ -43,6 +43,8 @@ python3.11 -m venv .venv
 Path 不是 HTTP(S) URL 时仍透明代理到 Jellyfin。
 当视频请求没有 `MediaSourceId` 时，会尝试使用 `/Videos/{id}/...` 中的 ID；
 32 位 UUID 的带连字符和无连字符格式视为同一个 ID。
+兼容使用 `/emby/Items/{id}/PlaybackInfo` 查询播放信息、随后通过
+`/emby/api/danmu/{id}/raw` 播放的客户端；raw 路径同样优先使用缓存的远程 Path。
 
 透明代理响应采用异步流式传输，不会把完整视频加载到内存；Range、Content-Range、
 Content-Length 和 Content-Encoding 等媒体响应头会原样保留。

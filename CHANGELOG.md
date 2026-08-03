@@ -7,6 +7,12 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## 0.7.2 - 2026-08-03
+
+- Added PlaybackInfo processing for the `/emby/Items/{id}/PlaybackInfo` route.
+- Added cached remote media redirects for `/emby/api/danmu/{id}/raw`, with
+  streaming proxy fallback for local media and cache misses.
+
 ## 0.7.1 - 2026-08-03
 
 - Added direct redirect lookup from the `/Videos/{id}/...` path when clients

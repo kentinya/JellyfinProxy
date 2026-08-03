@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: jellyfinproxy:0.7.1
+    image: jellyfinproxy:0.7.2
     restart: unless-stopped
     network_mode: host
     environment:

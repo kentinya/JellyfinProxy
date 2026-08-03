@@ -26,6 +26,14 @@ class VideoHandler:
             path_parts = request.url.path.strip("/").split("/")
             if len(path_parts) >= 2 and path_parts[0].casefold() == "videos":
                 media_source_id = path_parts[1]
+            elif (
+                len(path_parts) == 5
+                and path_parts[0].casefold() == "emby"
+                and path_parts[1].casefold() == "api"
+                and path_parts[2].casefold() == "danmu"
+                and path_parts[4].casefold() == "raw"
+            ):
+                media_source_id = path_parts[3]
         if media_source_id:
             path = self._media_source_cache.get(media_source_id)
             if path is not None:

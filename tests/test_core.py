@@ -35,6 +35,7 @@ class RewriteRule:
 def test_routes_cover_playback_and_video_variants() -> None:
     router = Router()
     assert router.match("/Items/abc/PlaybackInfo", "GET") is HandlerType.PLAYBACK
+    assert router.match("/emby/Items/abc/PlaybackInfo", "GET") is HandlerType.PLAYBACK
     assert router.match("/Items/abc/PlaybackInfo", "POST") is HandlerType.PLAYBACK
     assert router.match("/Items/abc/PlaybackInfo", "PUT") is HandlerType.DEFAULT
     for path in (
@@ -49,6 +50,7 @@ def test_routes_cover_playback_and_video_variants() -> None:
         assert router.match(path, "GET") is HandlerType.VIDEO
     assert router.match("/Video/stream/movie.mkv", "GET") is HandlerType.DEFAULT
     assert router.match("/videography", "GET") is HandlerType.DEFAULT
+    assert router.match("/emby/api/danmu/source-id/raw", "GET") is HandlerType.VIDEO
 
 
 def test_video_handler_redirects_to_cached_media_source_path() -> None:
@@ -90,6 +92,29 @@ def test_video_handler_uses_hyphenated_path_id_when_query_id_is_missing() -> Non
         "scheme": "http",
         "server": ("proxy", 8097),
         "path": "/Videos/788be25d-f930-7eb4-19a2-316de9f9d699/stream",
+        "query_string": b"",
+        "headers": [],
+    })
+
+    response = asyncio.run(VideoHandler(FailingProxy(), cache).handle(request))  # type: ignore[arg-type]
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "https://media.example/movie.mkv"
+
+
+def test_video_handler_uses_emby_danmu_raw_path_id() -> None:
+    class FailingProxy:
+        async def handle(self, request: Request) -> Response:
+            raise AssertionError(f"unexpected proxy fallback for {request.url.path}")
+
+    cache = MediaSourceCache()
+    cache.remember("source-id", "https://media.example/movie.mkv")
+    request = Request({
+        "type": "http",
+        "method": "GET",
+        "scheme": "http",
+        "server": ("proxy", 8097),
+        "path": "/emby/api/danmu/source-id/raw",
         "query_string": b"",
         "headers": [],
     })
