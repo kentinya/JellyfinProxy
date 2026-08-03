@@ -74,6 +74,32 @@ def test_video_handler_redirects_to_cached_media_source_path() -> None:
     assert response.headers["location"] == "https://media.example/movie.mkv?token=secret"
 
 
+def test_video_handler_uses_hyphenated_path_id_when_query_id_is_missing() -> None:
+    class FailingProxy:
+        async def handle(self, request: Request) -> Response:
+            raise AssertionError(f"unexpected proxy fallback for {request.url.path}")
+
+    cache = MediaSourceCache()
+    cache.remember(
+        "788be25df9307eb419a2316de9f9d699",
+        "https://media.example/movie.mkv",
+    )
+    request = Request({
+        "type": "http",
+        "method": "GET",
+        "scheme": "http",
+        "server": ("proxy", 8097),
+        "path": "/Videos/788be25d-f930-7eb4-19a2-316de9f9d699/stream",
+        "query_string": b"",
+        "headers": [],
+    })
+
+    response = asyncio.run(VideoHandler(FailingProxy(), cache).handle(request))  # type: ignore[arg-type]
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "https://media.example/movie.mkv"
+
+
 def test_playback_service_caches_modified_media_source_path() -> None:
     cache = MediaSourceCache()
     document = {"MediaSources": [{
@@ -95,6 +121,18 @@ def test_media_source_cache_rejects_local_paths() -> None:
     cache = MediaSourceCache()
     cache.remember("source-id", "/media/movie.mkv")
     assert cache.get("source-id") is None
+
+
+def test_media_source_cache_normalizes_uuid_format() -> None:
+    cache = MediaSourceCache()
+    cache.remember(
+        "788be25df9307eb419a2316de9f9d699",
+        "https://media.example/movie.mkv",
+    )
+    assert (
+        cache.get("788BE25D-F930-7EB4-19A2-316DE9F9D699")
+        == "https://media.example/movie.mkv"
+    )
 
 
 def test_client_bypass_is_case_insensitive_across_headers() -> None:

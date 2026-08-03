@@ -7,6 +7,12 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## 0.7.1 - 2026-08-03
+
+- Added direct redirect lookup from the `/Videos/{id}/...` path when clients
+  omit `MediaSourceId`.
+- Normalized hyphenated and compact 32-character media UUIDs for cache lookup.
+
 ## 0.7.0 - 2026-08-03
 
 - Changed transparent proxy responses to asynchronous streaming so large video

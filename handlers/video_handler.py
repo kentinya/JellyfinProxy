@@ -22,6 +22,10 @@ class VideoHandler:
 
     async def handle(self, request: Request) -> Response:
         media_source_id = request.query_params.get("MediaSourceId")
+        if not media_source_id:
+            path_parts = request.url.path.strip("/").split("/")
+            if len(path_parts) >= 2 and path_parts[0].casefold() == "videos":
+                media_source_id = path_parts[1]
         if media_source_id:
             path = self._media_source_cache.get(media_source_id)
             if path is not None:
