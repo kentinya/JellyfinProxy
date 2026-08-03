@@ -31,7 +31,7 @@ class Dispatcher:
         self._client_policy = client_policy
         self._proxy = ProxyHandler(http_client)
         self._playback = PlaybackHandler(http_client, playback_service)
-        self._video = VideoHandler(self._proxy)
+        self._video = VideoHandler(self._proxy, playback_service.media_source_cache)
 
     async def dispatch(self, request: Request) -> Response:
         if self._client_policy.should_bypass(request.headers):

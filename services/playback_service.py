@@ -6,14 +6,20 @@ import logging
 from typing import Any
 
 from services.media_source_service import MediaSourceAction, MediaSourceService
+from services.media_source_cache import MediaSourceCache
 
 
 logger = logging.getLogger(__name__)
 
 
 class PlaybackService:
-    def __init__(self, media_source_service: MediaSourceService) -> None:
+    def __init__(
+        self,
+        media_source_service: MediaSourceService,
+        media_source_cache: MediaSourceCache | None = None,
+    ) -> None:
         self._media_source_service = media_source_service
+        self.media_source_cache = media_source_cache or MediaSourceCache()
 
     async def modify(self, playback_info: Any) -> Any:
         if not isinstance(playback_info, dict):
@@ -27,13 +33,13 @@ class PlaybackService:
             if not isinstance(source, dict):
                 continue
             decision = self._media_source_service.decide(source)
-            if decision.action is MediaSourceAction.PASSTHROUGH:
-                continue
-            if decision.url is not None:
-                source["Path"] = decision.url
-            if decision.field_updates is not None:
-                source.update(decision.field_updates)
-            modified_count += 1
+            if decision.action is not MediaSourceAction.PASSTHROUGH:
+                if decision.url is not None:
+                    source["Path"] = decision.url
+                if decision.field_updates is not None:
+                    source.update(decision.field_updates)
+                modified_count += 1
+            self.media_source_cache.remember(source.get("Id"), source.get("Path"))
         logger.info(
             "playback_info_processed media_sources=%d modified=%d",
             len(media_sources),

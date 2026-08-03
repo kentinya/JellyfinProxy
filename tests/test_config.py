@@ -30,6 +30,7 @@ def test_settings_load_from_toml_and_resolve_relative_log_path(tmp_path: Path) -
     assert settings.request_timeout_seconds == 12.5
     assert settings.log_level == "DEBUG"
     assert settings.log_file == str(tmp_path / "logs/JellyfinProxy.log")
+    assert settings.access_log_file == str(tmp_path / "access.log")
 
 
 def test_missing_config_has_clear_error(tmp_path: Path) -> None:

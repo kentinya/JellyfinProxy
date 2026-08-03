@@ -16,7 +16,7 @@ from fastapi import FastAPI, Request, Response
 from config import Settings, default_config_path
 from handlers.dispatcher import Dispatcher
 from infrastructure.http_client import JellyfinHttpClient
-from infrastructure.logging import bind_request_id, configure_logging, reset_request_id
+from infrastructure.logging import bind_request_id, configure_logging, log_access, reset_request_id
 from policies.client_policy import ClientPolicy
 from routers.router import Router
 from services.media_resolver import MediaResolver
@@ -72,8 +72,10 @@ def create_app(settings: Settings) -> FastAPI:
         request_id = _request_id(request)
         token = bind_request_id(request_id)
         started = perf_counter()
+        status_code = 500
         try:
             response = await call_next(request)
+            status_code = response.status_code
         except Exception:
             logger.exception(
                 "request_failed method=%s path=%s duration_ms=%.2f",
@@ -94,6 +96,16 @@ def create_app(settings: Settings) -> FastAPI:
             )
             return response
         finally:
+            query = request.url.query
+            path = request.url.path + (f"?{query}" if query else "")
+            client_ip = request.client.host if request.client else "-"
+            log_access(
+                method=request.method,
+                path=path,
+                status_code=status_code,
+                duration_ms=(perf_counter() - started) * 1000,
+                client_ip=client_ip,
+            )
             reset_request_id(token)
 
     @app.api_route(
@@ -130,7 +142,11 @@ else:
     candidate = default_config_path()
     runtime_settings = Settings.from_file(candidate) if candidate.exists() else Settings.from_env()
 
-configure_logging(runtime_settings.log_level, runtime_settings.log_file)
+configure_logging(
+    runtime_settings.log_level,
+    runtime_settings.log_file,
+    runtime_settings.access_log_file,
+)
 app = create_app(runtime_settings)
 
 

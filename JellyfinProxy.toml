@@ -7,3 +7,4 @@ debug = false
 request_timeout_seconds = 60
 log_level = "INFO"
 log_file = "JellyfinProxy.log"
+access_log_file = "access.log"

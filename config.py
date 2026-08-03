@@ -43,6 +43,7 @@ class Settings:
     request_timeout_seconds: float
     log_level: str
     log_file: str
+    access_log_file: str
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -55,6 +56,7 @@ class Settings:
             request_timeout_seconds=float(os.getenv("REQUEST_TIMEOUT_SECONDS", "60")),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             log_file=os.getenv("LOG_FILE", "JellyfinProxy.log"),
+            access_log_file=os.getenv("ACCESS_LOG_FILE", "access.log"),
         )
 
     @classmethod
@@ -79,6 +81,17 @@ class Settings:
         else:
             resolved_log_file = ""
 
+        access_log_file = os.getenv(
+            "ACCESS_LOG_FILE", str(values.get("access_log_file", "access.log"))
+        ).strip()
+        if access_log_file:
+            access_log_path = Path(access_log_file).expanduser()
+            if not access_log_path.is_absolute():
+                access_log_path = config_path.parent / access_log_path
+            resolved_access_log_file = str(access_log_path)
+        else:
+            resolved_access_log_file = ""
+
         bypass_value: Any = os.getenv("BYPASS_CLIENTS")
         if bypass_value is None:
             bypass_value = values.get("bypass_clients", ["Infuse", "Kodi"])
@@ -99,6 +112,7 @@ class Settings:
             ),
             log_level=os.getenv("LOG_LEVEL", str(values.get("log_level", "INFO"))),
             log_file=resolved_log_file,
+            access_log_file=resolved_access_log_file,
         )
 
 

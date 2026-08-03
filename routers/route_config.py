@@ -30,7 +30,7 @@ ROUTE_RULES: tuple[RouteRule, ...] = (
     ),
     RouteRule(
         name="video",
-        pattern=compile(r"^/Videos/([^/]+)(?:/.*)?$", flags=0),
+        pattern=compile(r"^(?:/[Vv]ideos/[^/]+|/video)(?:/.*)?$", flags=0),
         handler_type=HandlerType.VIDEO,
     ),
     RouteRule(name="default", pattern=compile(r".*", flags=0), handler_type=HandlerType.DEFAULT),

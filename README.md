@@ -21,16 +21,26 @@ python3.11 -m venv .venv
 
 `LOG_LEVEL` 控制日志级别，默认为 `INFO`。程序会为每个请求返回
 `X-Request-ID` 响应头；如果请求已经携带合法的 `X-Request-ID`，程序会保留
-该值，以便关联请求、上游访问和播放策略日志。日志不会记录查询参数、请求体或
-认证请求头。
+该值，以便关联请求、上游访问和播放策略日志。应用日志不会记录查询参数、请求体
+或认证请求头。
 
 `LOG_FILE` 用于指定轮转日志文件，默认是在配置文件所在目录创建
 `JellyfinProxy.log`。单个日志文件达到 10 MiB 后自动轮转，最多保留 5 个备份。
 将 `LOG_FILE` 设置为空字符串可以关闭文件日志，只输出到标准输出。
 
+`ACCESS_LOG_FILE` 用于指定独立的访问日志，默认为配置文件同目录下的
+`access.log`。格式参考 MediaWarp，包含请求时间、状态码、耗时、HTTP 方法、
+客户端 IP 和请求路径；查询串中的 API key、token 等认证值会自动脱敏。访问日志
+采用相同的轮转规则，将 `ACCESS_LOG_FILE` 设置为空字符串可关闭写入。
+
 代理不会打开或读取 STRM 文件。媒体元数据和 STRM 内容仍由 Jellyfin 负责
 解析；JellyfinProxy 只分析 Jellyfin 返回的 HTTP(S)
 `MediaSources[].Path`，并应用已配置的策略规则。
+
+处理 `PlaybackInfo` 时，代理会在内存中缓存有效的 HTTP(S)
+`MediaSource.Id` 与 `Path`。后续 `/Videos/{id}/...` 或 `/videos/{id}/...`
+请求携带匹配的 `MediaSourceId` 时，将返回 `302` 重定向至该 Path；缓存未命中或
+Path 不是 HTTP(S) URL 时仍透明代理到 Jellyfin。
 
 ## 版本管理
 

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import Request
 
-from infrastructure.logging import bind_request_id, configure_logging, reset_request_id
+from infrastructure.logging import bind_request_id, configure_logging, log_access, reset_request_id
 from config import Settings
 from main import _request_id, create_app
 
@@ -39,6 +39,27 @@ def test_sensitive_query_values_are_redacted(tmp_path: Path) -> None:
     output = log_file.read_text(encoding="utf-8")
     assert "secret" not in output
     assert "api_key=[REDACTED]" in output
+
+
+def test_access_logs_are_written_separately_and_redacted(tmp_path: Path) -> None:
+    service_log = tmp_path / "JellyfinProxy.log"
+    access_log = tmp_path / "access.log"
+    configure_logging("INFO", str(service_log), str(access_log))
+
+    log_access(
+        method="GET",
+        path="/Items?api_key=secret&deviceId=safe",
+        status_code=200,
+        duration_ms=12.34,
+        client_ip="127.0.0.1",
+    )
+
+    output = access_log.read_text(encoding="utf-8")
+    assert '【Access】' in output
+    assert '200 | 12.34ms | GET' in output
+    assert '127.0.0.1 "/Items?api_key=[REDACTED]&deviceId=safe"' in output
+    assert "secret" not in output
+    assert "【Access】" not in service_log.read_text(encoding="utf-8")
 
 
 def _request_with_id(value: str) -> Request:

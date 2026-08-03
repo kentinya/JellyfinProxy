@@ -7,6 +7,27 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## 0.6.0 - 2026-08-03
+
+- Added direct video redirects from `/videos/{id}/...` requests to the cached
+  HTTP(S) `MediaSource.Path` selected by `MediaSourceId`.
+- Preserved transparent proxy fallback when no safe cached path is available.
+
+## 0.5.2 - 2026-08-03
+
+- Added video-route matching for clients that send the lowercase plural
+  `/videos/{id}/...` path.
+
+## 0.5.1 - 2026-08-03
+
+- Added video-route matching for the lowercase `/video` path prefix while
+  preserving Jellyfin `/Videos/{id}` compatibility.
+
+## 0.5.0 - 2026-08-03
+
+- Added a dedicated, rotating MediaWarp-style access log with configurable
+  output path and credential redaction.
+
 ## 0.4.1 - 2026-08-03
 
 - Fixed corrupted browser assets when Jellyfin selected Brotli compression.

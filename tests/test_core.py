@@ -4,12 +4,15 @@ import asyncio
 import gzip
 
 import httpx
+from fastapi import Request, Response
 
+from handlers.video_handler import VideoHandler
 from handlers.proxy_handler import response_headers
 from policies.client_policy import ClientPolicy
 from routers.route_config import HandlerType
 from routers.router import Router
 from services.media_resolver import MediaResolver
+from services.media_source_cache import MediaSourceCache
 from services.media_source_service import (
     MediaSourceAction,
     MediaSourceDecision,
@@ -34,8 +37,64 @@ def test_routes_cover_playback_and_video_variants() -> None:
     assert router.match("/Items/abc/PlaybackInfo", "GET") is HandlerType.PLAYBACK
     assert router.match("/Items/abc/PlaybackInfo", "POST") is HandlerType.PLAYBACK
     assert router.match("/Items/abc/PlaybackInfo", "PUT") is HandlerType.DEFAULT
-    for path in ("/Videos/id/stream", "/Videos/id/stream.mp4", "/Videos/id/master.m3u8", "/Videos/id/hls/a.ts"):
+    for path in (
+        "/Videos/id/stream",
+        "/Videos/id/stream.mp4",
+        "/Videos/id/master.m3u8",
+        "/Videos/id/hls/a.ts",
+        "/videos/788be25df9307eb419a2316de9f9d699/stream.mkv",
+        "/video",
+        "/video/stream/movie.mkv",
+    ):
         assert router.match(path, "GET") is HandlerType.VIDEO
+    assert router.match("/Video/stream/movie.mkv", "GET") is HandlerType.DEFAULT
+    assert router.match("/videography", "GET") is HandlerType.DEFAULT
+
+
+def test_video_handler_redirects_to_cached_media_source_path() -> None:
+    class FailingProxy:
+        async def handle(self, request: Request) -> Response:
+            raise AssertionError(f"unexpected proxy fallback for {request.url.path}")
+
+    cache = MediaSourceCache()
+    cache.remember("source-id", "https://media.example/movie.mkv?token=secret")
+    request = Request({
+        "type": "http",
+        "method": "GET",
+        "scheme": "http",
+        "server": ("proxy", 8097),
+        "path": "/videos/item/stream.mkv",
+        "query_string": b"MediaSourceId=source-id",
+        "headers": [],
+    })
+
+    response = asyncio.run(VideoHandler(FailingProxy(), cache).handle(request))  # type: ignore[arg-type]
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "https://media.example/movie.mkv?token=secret"
+
+
+def test_playback_service_caches_modified_media_source_path() -> None:
+    cache = MediaSourceCache()
+    document = {"MediaSources": [{
+        "Id": "source-id",
+        "Path": "https://media.example/movie.mkv",
+    }]}
+
+    asyncio.run(
+        PlaybackService(
+            MediaSourceService(MediaResolver(), rules=(ProtocolFileRule(),)),
+            cache,
+        ).modify(document)
+    )
+
+    assert cache.get("source-id") == "https://media.example/movie.mkv"
+
+
+def test_media_source_cache_rejects_local_paths() -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-id", "/media/movie.mkv")
+    assert cache.get("source-id") is None
 
 
 def test_client_bypass_is_case_insensitive_across_headers() -> None:
