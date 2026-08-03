@@ -22,7 +22,7 @@ def default_config_path() -> Path:
     """Return the config beside the executable (or source tree in development)."""
 
     base = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
-    return base / "mediawarp.toml"
+    return base / "JellyfinProxy.toml"
 
 
 def _configured_list(value: Any) -> tuple[str, ...]:
@@ -54,7 +54,7 @@ class Settings:
             debug=_as_bool(os.getenv("DEBUG", "false")),
             request_timeout_seconds=float(os.getenv("REQUEST_TIMEOUT_SECONDS", "60")),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
-            log_file=os.getenv("LOG_FILE", "mediawarp.log"),
+            log_file=os.getenv("LOG_FILE", "JellyfinProxy.log"),
         )
 
     @classmethod
@@ -70,7 +70,7 @@ class Settings:
         except tomllib.TOMLDecodeError as exc:
             raise ValueError(f"Invalid TOML configuration: {exc}") from exc
 
-        log_file = os.getenv("LOG_FILE", str(values.get("log_file", "mediawarp.log")))
+        log_file = os.getenv("LOG_FILE", str(values.get("log_file", "JellyfinProxy.log")))
         log_path = Path(log_file).expanduser()
         if not log_path.is_absolute():
             log_path = config_path.parent / log_path

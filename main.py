@@ -61,7 +61,7 @@ def create_app(settings: Settings) -> FastAPI:
         logger.info("application_stopped")
 
     app = FastAPI(
-        title="Jellyfin Middleware Proxy",
+        title="JellyfinProxy",
         version=__version__,
         debug=settings.debug,
         lifespan=lifespan,
@@ -84,7 +84,7 @@ def create_app(settings: Settings) -> FastAPI:
             raise
         else:
             response.headers["x-request-id"] = request_id
-            response.headers["x-mediawarp-version"] = __version__
+            response.headers["x-jellyfinproxy-version"] = __version__
             logger.info(
                 "request_completed method=%s path=%s status=%d duration_ms=%.2f",
                 request.method,
@@ -109,13 +109,13 @@ def create_app(settings: Settings) -> FastAPI:
 
 
 def _argument_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="MediaWarp Jellyfin middleware proxy")
+    parser = argparse.ArgumentParser(description="JellyfinProxy middleware proxy")
     parser.add_argument(
         "--config",
         default=str(default_config_path()),
         help="path to the TOML configuration file",
     )
-    parser.add_argument("--version", action="version", version=f"MediaWarp {__version__}")
+    parser.add_argument("--version", action="version", version=f"JellyfinProxy {__version__}")
     return parser
 
 

@@ -1,11 +1,16 @@
 # Changelog
 
-All notable changes to MediaWarp are recorded here. Versions follow
+All notable changes to JellyfinProxy are recorded here. Versions follow
 [Semantic Versioning](https://semver.org/):
 
 - MAJOR: incompatible behavior or configuration changes.
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
+
+## 0.3.0 - 2026-08-03
+
+- Renamed the application, executable, configuration, logs, and response header
+  from MediaWarp to JellyfinProxy.
 
 ## 0.2.0 - 2026-08-03
 

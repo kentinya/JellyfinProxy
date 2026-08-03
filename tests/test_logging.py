@@ -24,14 +24,14 @@ def test_log_records_include_bound_request_id(capsys) -> None:
 
 
 def test_logs_are_written_to_file(tmp_path: Path) -> None:
-    log_file = tmp_path / "mediawarp.log"
+    log_file = tmp_path / "JellyfinProxy.log"
     configure_logging("INFO", str(log_file))
     logging.getLogger("test").info("file_message")
     assert "file_message" in log_file.read_text(encoding="utf-8")
 
 
 def test_sensitive_query_values_are_redacted(tmp_path: Path) -> None:
-    log_file = tmp_path / "mediawarp.log"
+    log_file = tmp_path / "JellyfinProxy.log"
     configure_logging("INFO", str(log_file))
     logging.getLogger("test").warning(
         'WebSocket /socket?api_key=secret&deviceId=safe'
