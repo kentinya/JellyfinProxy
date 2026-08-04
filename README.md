@@ -33,6 +33,10 @@ video_bypass_clients = ["A"]
 C 无需出现在任何列表中。`bypass_clients` 优先级最高；同一个客户端如果也出现
 在其他列表中，仍会绕过所有修改。
 
+PlaybackInfo 和 Video 请求会在应用日志中产生 `client_identified` 记录，包含
+客户端名称、设备名称、设备 ID、User-Agent 以及最终选择的 `modify` 或 `bypass`
+动作。客户端字段会清理控制字符并限制长度，认证信息不会写入日志。
+
 `LOG_LEVEL` 控制日志级别，默认为 `INFO`。程序会为每个请求返回
 `X-Request-ID` 响应头；如果请求已经携带合法的 `X-Request-ID`，程序会保留
 该值，以便关联请求、上游访问和播放策略日志。应用日志不会记录查询参数、请求体

@@ -17,6 +17,14 @@ from services.playback_service import PlaybackService
 
 
 logger = logging.getLogger(__name__)
+CLIENT_HEADER_LIMIT = 256
+
+
+def _safe_client_header(value: str | None) -> str:
+    """Make a client identity header safe and compact enough for one log line."""
+
+    cleaned = "".join(" " if ord(character) < 32 or ord(character) == 127 else character for character in (value or ""))
+    return cleaned[:CLIENT_HEADER_LIMIT]
 
 
 class Dispatcher:
@@ -35,7 +43,20 @@ class Dispatcher:
 
     async def dispatch(self, request: Request) -> Response:
         handler_type = self._router.match(request.url.path, request.method)
-        if self._client_policy.should_bypass(request.headers, handler_type):
+        bypass = self._client_policy.should_bypass(request.headers, handler_type)
+        if handler_type in (HandlerType.PLAYBACK, HandlerType.VIDEO):
+            logger.info(
+                "client_identified route=%s action=%s emby_client=%r device_name=%r "
+                "device_id=%r user_agent=%r",
+                handler_type.value,
+                "bypass" if bypass else "modify",
+                _safe_client_header(request.headers.get("x-emby-client")),
+                _safe_client_header(request.headers.get("x-emby-device-name")),
+                _safe_client_header(request.headers.get("x-emby-device-id")),
+                _safe_client_header(request.headers.get("user-agent")),
+            )
+
+        if bypass:
             logger.debug(
                 "route_selected handler=proxy reason=client_bypass route=%s",
                 handler_type.value,

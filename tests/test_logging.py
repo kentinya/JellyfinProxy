@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import Request
 
+from handlers.dispatcher import CLIENT_HEADER_LIMIT, _safe_client_header
 from infrastructure.logging import bind_request_id, configure_logging, log_access, reset_request_id
 from config import Settings
 from main import _request_id, create_app
@@ -81,3 +82,12 @@ def test_request_id_preserves_safe_values_and_replaces_unsafe_values() -> None:
 def test_response_middleware_version_uses_configured_app() -> None:
     app = create_app(Settings.from_env())
     assert app.version
+
+
+def test_client_identity_headers_are_safe_and_bounded() -> None:
+    value = "Infuse\r\nforged-log" + ("x" * 300)
+    cleaned = _safe_client_header(value)
+    assert "\r" not in cleaned
+    assert "\n" not in cleaned
+    assert "Infuse  forged-log" in cleaned
+    assert len(cleaned) == CLIENT_HEADER_LIMIT

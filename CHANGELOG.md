@@ -7,6 +7,11 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## 0.8.1 - 2026-08-04
+
+- Added sanitized client identity logging for PlaybackInfo and Video requests,
+  including the selected modify or bypass action.
+
 ## 0.8.0 - 2026-08-04
 
 - Added independent per-client bypass lists for PlaybackInfo modifications and
