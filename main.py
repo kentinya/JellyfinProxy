@@ -43,7 +43,11 @@ def create_app(settings: Settings) -> FastAPI:
         )
         app.state.dispatcher = Dispatcher(
             router=Router(),
-            client_policy=ClientPolicy(settings.bypass_clients),
+            client_policy=ClientPolicy(
+                settings.bypass_clients,
+                settings.playback_bypass_clients,
+                settings.video_bypass_clients,
+            ),
             http_client=http_client,
             playback_service=PlaybackService(
                 MediaSourceService(MediaResolver(), rules=(ProtocolFileRule(),))

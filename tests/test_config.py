@@ -13,6 +13,8 @@ def test_settings_load_from_toml_and_resolve_relative_log_path(tmp_path: Path) -
             'listen_host = "127.0.0.1"',
             'listen_port = 9000',
             'bypass_clients = ["Infuse"]',
+            'playback_bypass_clients = ["PlaybackOnlyBypass"]',
+            'video_bypass_clients = ["VideoOnlyBypass"]',
             'debug = true',
             'request_timeout_seconds = 12.5',
             'log_level = "DEBUG"',
@@ -26,6 +28,8 @@ def test_settings_load_from_toml_and_resolve_relative_log_path(tmp_path: Path) -
     assert settings.listen_host == "127.0.0.1"
     assert settings.listen_port == 9000
     assert settings.bypass_clients == ("Infuse",)
+    assert settings.playback_bypass_clients == ("PlaybackOnlyBypass",)
+    assert settings.video_bypass_clients == ("VideoOnlyBypass",)
     assert settings.debug is True
     assert settings.request_timeout_seconds == 12.5
     assert settings.log_level == "DEBUG"

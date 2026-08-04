@@ -19,6 +19,20 @@ python3.11 -m venv .venv
 `User-Agent`、`X-Emby-Client` 和 `X-Emby-Device-Name` 请求头中进行
 子字符串匹配。匹配成功的客户端将绕过所有播放信息修改，直接代理到 Jellyfin。
 
+`PLAYBACK_BYPASS_CLIENTS` 和 `VIDEO_BYPASS_CLIENTS` 可分别绕过 PlaybackInfo
+修改和 Video 重定向。TOML 中对应 `playback_bypass_clients` 与
+`video_bypass_clients` 数组。例如，若 A 只改 PlaybackInfo、B 只改 Video、C
+两者都改、D 两者都绕过，可配置：
+
+```toml
+bypass_clients = ["D"]
+playback_bypass_clients = ["B"]
+video_bypass_clients = ["A"]
+```
+
+C 无需出现在任何列表中。`bypass_clients` 优先级最高；同一个客户端如果也出现
+在其他列表中，仍会绕过所有修改。
+
 `LOG_LEVEL` 控制日志级别，默认为 `INFO`。程序会为每个请求返回
 `X-Request-ID` 响应头；如果请求已经携带合法的 `X-Request-ID`，程序会保留
 该值，以便关联请求、上游访问和播放策略日志。应用日志不会记录查询参数、请求体

@@ -167,6 +167,31 @@ def test_client_bypass_is_case_insensitive_across_headers() -> None:
     assert not policy.should_bypass({"user-agent": "Jellyfin Web"})
 
 
+def test_client_can_bypass_playback_and_video_independently() -> None:
+    policy = ClientPolicy(
+        ("Client D",),
+        playback_bypass_clients=("Client B",),
+        video_bypass_clients=("Client A",),
+    )
+
+    client_a = {"x-emby-client": "Client A"}
+    assert not policy.should_bypass(client_a, HandlerType.PLAYBACK)
+    assert policy.should_bypass(client_a, HandlerType.VIDEO)
+
+    client_b = {"x-emby-client": "Client B"}
+    assert policy.should_bypass(client_b, HandlerType.PLAYBACK)
+    assert not policy.should_bypass(client_b, HandlerType.VIDEO)
+
+    client_c = {"x-emby-client": "Client C"}
+    assert not policy.should_bypass(client_c, HandlerType.PLAYBACK)
+    assert not policy.should_bypass(client_c, HandlerType.VIDEO)
+
+    client_d = {"x-emby-client": "Client D"}
+    assert policy.should_bypass(client_d, HandlerType.PLAYBACK)
+    assert policy.should_bypass(client_d, HandlerType.VIDEO)
+    assert policy.should_bypass(client_d, HandlerType.DEFAULT)
+
+
 def test_media_resolver_only_analyzes_existing_http_urls() -> None:
     resolver = MediaResolver()
     analyzed = resolver.analyze("https://alist.example.com/movie/test.mkv")

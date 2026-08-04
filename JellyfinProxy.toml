@@ -3,6 +3,10 @@ jellyfin_url = "http://127.0.0.1:8096"
 listen_host = "0.0.0.0"
 listen_port = 8097
 bypass_clients = ["Infuse", "Kodi"]
+# Clients listed here bypass only PlaybackInfo modifications.
+playback_bypass_clients = []
+# Clients listed here bypass only Video redirects/modifications.
+video_bypass_clients = []
 debug = false
 request_timeout_seconds = 60
 log_level = "INFO"

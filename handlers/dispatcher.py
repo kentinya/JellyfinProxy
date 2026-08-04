@@ -34,11 +34,14 @@ class Dispatcher:
         self._video = VideoHandler(self._proxy, playback_service.media_source_cache)
 
     async def dispatch(self, request: Request) -> Response:
-        if self._client_policy.should_bypass(request.headers):
-            logger.debug("route_selected handler=proxy reason=client_bypass")
+        handler_type = self._router.match(request.url.path, request.method)
+        if self._client_policy.should_bypass(request.headers, handler_type):
+            logger.debug(
+                "route_selected handler=proxy reason=client_bypass route=%s",
+                handler_type.value,
+            )
             return await self._proxy.handle(request)
 
-        handler_type = self._router.match(request.url.path, request.method)
         logger.debug("route_selected handler=%s", handler_type.value)
         if handler_type is HandlerType.PLAYBACK:
             return await self._playback.handle(request)

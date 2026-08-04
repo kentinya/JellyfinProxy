@@ -30,7 +30,14 @@ def _configured_list(value: Any) -> tuple[str, ...]:
         return _as_list(value)
     if isinstance(value, list) and all(isinstance(item, str) for item in value):
         return tuple(item.strip() for item in value if item.strip())
-    raise ValueError("bypass_clients must be a string or an array of strings")
+    raise ValueError("client list must be a string or an array of strings")
+
+
+def _client_list(values: dict[str, Any], name: str) -> tuple[str, ...]:
+    value: Any = os.getenv(name.upper())
+    if value is None:
+        value = values.get(name, [])
+    return _configured_list(value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +46,8 @@ class Settings:
     listen_host: str
     listen_port: int
     bypass_clients: tuple[str, ...]
+    playback_bypass_clients: tuple[str, ...]
+    video_bypass_clients: tuple[str, ...]
     debug: bool
     request_timeout_seconds: float
     log_level: str
@@ -52,6 +61,8 @@ class Settings:
             listen_host=os.getenv("LISTEN_HOST", "0.0.0.0"),
             listen_port=int(os.getenv("LISTEN_PORT", "8097")),
             bypass_clients=_as_list(os.getenv("BYPASS_CLIENTS", "Infuse,Kodi")),
+            playback_bypass_clients=_as_list(os.getenv("PLAYBACK_BYPASS_CLIENTS", "")),
+            video_bypass_clients=_as_list(os.getenv("VIDEO_BYPASS_CLIENTS", "")),
             debug=_as_bool(os.getenv("DEBUG", "false")),
             request_timeout_seconds=float(os.getenv("REQUEST_TIMEOUT_SECONDS", "60")),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
@@ -103,6 +114,8 @@ class Settings:
             listen_host=os.getenv("LISTEN_HOST", str(values.get("listen_host", "0.0.0.0"))),
             listen_port=int(os.getenv("LISTEN_PORT", str(values.get("listen_port", 8097)))),
             bypass_clients=_configured_list(bypass_value),
+            playback_bypass_clients=_client_list(values, "playback_bypass_clients"),
+            video_bypass_clients=_client_list(values, "video_bypass_clients"),
             debug=_as_bool(os.getenv("DEBUG", str(values.get("debug", False)))),
             request_timeout_seconds=float(
                 os.getenv(

@@ -7,6 +7,12 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## 0.8.0 - 2026-08-04
+
+- Added independent per-client bypass lists for PlaybackInfo modifications and
+  Video redirects while retaining the existing full-bypass list.
+- Added TOML and environment-variable configuration for both route categories.
+
 ## 0.7.2 - 2026-08-03
 
 - Added PlaybackInfo processing for the `/emby/Items/{id}/PlaybackInfo` route.
