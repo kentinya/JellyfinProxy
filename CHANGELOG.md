@@ -7,6 +7,17 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## 0.9.0 - 2026-08-06
+
+- Added a bounded, cross-device in-memory TTL cache for successful PlaybackInfo
+  responses so repeated POST requests do not trigger Jellyfin STRM probing again.
+- Added TOML and environment configuration for cache enablement, lifetime, and
+  capacity, plus `X-JellyfinProxy-Cache` response diagnostics.
+- Routed SenPlayer's `/api/danmu/{id}/raw` requests through the cached direct
+  video handler in addition to the existing `/emby/api/danmu/{id}/raw` form.
+- Added an independent client list for bypassing PlaybackInfo cache reads and
+  writes without changing PlaybackInfo modification policy.
+
 ## 0.8.1 - 2026-08-04
 
 - Added sanitized client identity logging for PlaybackInfo and Video requests,

@@ -7,6 +7,7 @@ import httpx
 from fastapi import Request, Response
 
 from handlers.video_handler import VideoHandler
+from handlers.playback_handler import PlaybackHandler
 from handlers.proxy_handler import ProxyHandler, response_headers, streaming_response_headers
 from policies.client_policy import ClientPolicy
 from routers.route_config import HandlerType
@@ -20,6 +21,7 @@ from services.media_source_service import (
     ProtocolFileRule,
 )
 from services.playback_service import PlaybackService
+from services.playback_info_cache import PlaybackInfoCache
 
 
 class RewriteRule:
@@ -30,6 +32,96 @@ class RewriteRule:
                 media_url.url.replace("alist.example.com", "cdn.example.com"),
             )
         return None
+
+
+def test_playback_handler_serves_repeated_post_from_cache() -> None:
+    class CountingClient:
+        calls = 0
+
+        async def forward(self, request: Request) -> httpx.Response:
+            self.calls += 1
+            return httpx.Response(
+                200,
+                json={"MediaSources": [{
+                    "Id": "source-id",
+                    "Path": "https://media.example/movie.mkv",
+                }]},
+            )
+
+    def request(
+        device_id: bytes = b"android-device",
+        body: bytes = b'{"DeviceProfile":{"Name":"Android"}}',
+        api_key: bytes = b"first-token",
+        path: str = "/Items/item-id/PlaybackInfo",
+    ) -> Request:
+        sent = False
+
+        async def receive():
+            nonlocal sent
+            if sent:
+                return {"type": "http.disconnect"}
+            sent = True
+            return {"type": "http.request", "body": body}
+
+        return Request({
+            "type": "http",
+            "method": "POST",
+            "scheme": "http",
+            "server": ("proxy", 8097),
+            "path": path,
+            "query_string": b"UserId=user-id&api_key=" + api_key,
+            "headers": [(b"x-emby-device-id", device_id)],
+        }, receive)
+
+    client = CountingClient()
+    handler = PlaybackHandler(
+        client,  # type: ignore[arg-type]
+        PlaybackService(MediaSourceService(MediaResolver())),
+        PlaybackInfoCache(),
+    )
+
+    first = asyncio.run(handler.handle(request()))
+    second = asyncio.run(handler.handle(request(
+        device_id=b"television-device",
+        body=b'{"DeviceProfile":{"Name":"Android TV"}}',
+        api_key=b"second-token",
+    )))
+
+    assert client.calls == 1
+    assert first.headers["x-jellyfinproxy-cache"] == "MISS"
+    assert second.headers["x-jellyfinproxy-cache"] == "HIT"
+    assert second.body == first.body
+
+
+def test_playback_cache_normalizes_emby_and_uuid_path_variants() -> None:
+    class CountingClient:
+        calls = 0
+
+        async def forward(self, request: Request) -> httpx.Response:
+            self.calls += 1
+            return httpx.Response(200, json={"MediaSources": []})
+
+    def request(path: str) -> Request:
+        return Request({
+            "type": "http", "method": "POST", "scheme": "http",
+            "server": ("proxy", 8097), "path": path,
+            "query_string": b"", "headers": [],
+        })
+
+    client = CountingClient()
+    handler = PlaybackHandler(
+        client,  # type: ignore[arg-type]
+        PlaybackService(MediaSourceService(MediaResolver())),
+        PlaybackInfoCache(),
+    )
+    compact = "/emby/Items/c7abcb3401d22d5cd3fd058cc914bdcf/PlaybackInfo"
+    hyphenated = "/Items/c7abcb34-01d2-2d5c-d3fd-058cc914bdcf/PlaybackInfo"
+
+    asyncio.run(handler.handle(request(compact), modify=False))
+    hit = asyncio.run(handler.handle(request(hyphenated)))
+
+    assert client.calls == 1
+    assert hit.headers["x-jellyfinproxy-cache"] == "HIT"
 
 
 def test_routes_cover_playback_and_video_variants() -> None:
@@ -51,6 +143,7 @@ def test_routes_cover_playback_and_video_variants() -> None:
     assert router.match("/Video/stream/movie.mkv", "GET") is HandlerType.DEFAULT
     assert router.match("/videography", "GET") is HandlerType.DEFAULT
     assert router.match("/emby/api/danmu/source-id/raw", "GET") is HandlerType.VIDEO
+    assert router.match("/api/danmu/source-id/raw", "GET") is HandlerType.VIDEO
 
 
 def test_video_handler_redirects_to_cached_media_source_path() -> None:
@@ -115,6 +208,29 @@ def test_video_handler_uses_emby_danmu_raw_path_id() -> None:
         "scheme": "http",
         "server": ("proxy", 8097),
         "path": "/emby/api/danmu/source-id/raw",
+        "query_string": b"",
+        "headers": [],
+    })
+
+    response = asyncio.run(VideoHandler(FailingProxy(), cache).handle(request))  # type: ignore[arg-type]
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "https://media.example/movie.mkv"
+
+
+def test_video_handler_uses_danmu_raw_path_without_emby_prefix() -> None:
+    class FailingProxy:
+        async def handle(self, request: Request) -> Response:
+            raise AssertionError(f"unexpected proxy fallback for {request.url.path}")
+
+    cache = MediaSourceCache()
+    cache.remember("source-id", "https://media.example/movie.mkv")
+    request = Request({
+        "type": "http",
+        "method": "GET",
+        "scheme": "http",
+        "server": ("proxy", 8097),
+        "path": "/api/danmu/source-id/raw",
         "query_string": b"",
         "headers": [],
     })
@@ -190,6 +306,16 @@ def test_client_can_bypass_playback_and_video_independently() -> None:
     assert policy.should_bypass(client_d, HandlerType.PLAYBACK)
     assert policy.should_bypass(client_d, HandlerType.VIDEO)
     assert policy.should_bypass(client_d, HandlerType.DEFAULT)
+
+
+def test_client_can_bypass_playback_cache_independently() -> None:
+    policy = ClientPolicy(
+        (),
+        playback_cache_bypass_clients=("No Cache Client",),
+    )
+    headers = {"user-agent": "No Cache Client/1.0"}
+    assert policy.should_bypass_playback_cache(headers)
+    assert not policy.should_bypass(headers, HandlerType.PLAYBACK)
 
 
 def test_media_resolver_only_analyzes_existing_http_urls() -> None:

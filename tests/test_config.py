@@ -14,6 +14,7 @@ def test_settings_load_from_toml_and_resolve_relative_log_path(tmp_path: Path) -
             'listen_port = 9000',
             'bypass_clients = ["Infuse"]',
             'playback_bypass_clients = ["PlaybackOnlyBypass"]',
+            'playback_cache_bypass_clients = ["NoCacheClient"]',
             'video_bypass_clients = ["VideoOnlyBypass"]',
             'debug = true',
             'request_timeout_seconds = 12.5',
@@ -29,9 +30,13 @@ def test_settings_load_from_toml_and_resolve_relative_log_path(tmp_path: Path) -
     assert settings.listen_port == 9000
     assert settings.bypass_clients == ("Infuse",)
     assert settings.playback_bypass_clients == ("PlaybackOnlyBypass",)
+    assert settings.playback_cache_bypass_clients == ("NoCacheClient",)
     assert settings.video_bypass_clients == ("VideoOnlyBypass",)
     assert settings.debug is True
     assert settings.request_timeout_seconds == 12.5
+    assert settings.playback_info_cache_enabled is True
+    assert settings.playback_info_cache_ttl_seconds == 21600
+    assert settings.playback_info_cache_max_entries == 4096
     assert settings.log_level == "DEBUG"
     assert settings.log_file == str(tmp_path / "logs/JellyfinProxy.log")
     assert settings.access_log_file == str(tmp_path / "access.log")

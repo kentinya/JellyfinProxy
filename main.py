@@ -22,6 +22,7 @@ from routers.router import Router
 from services.media_resolver import MediaResolver
 from services.media_source_service import MediaSourceService, ProtocolFileRule
 from services.playback_service import PlaybackService
+from services.playback_info_cache import PlaybackInfoCache
 from version import __version__
 
 
@@ -47,10 +48,19 @@ def create_app(settings: Settings) -> FastAPI:
                 settings.bypass_clients,
                 settings.playback_bypass_clients,
                 settings.video_bypass_clients,
+                settings.playback_cache_bypass_clients,
             ),
             http_client=http_client,
             playback_service=PlaybackService(
                 MediaSourceService(MediaResolver(), rules=(ProtocolFileRule(),))
+            ),
+            playback_info_cache=(
+                PlaybackInfoCache(
+                    settings.playback_info_cache_ttl_seconds,
+                    settings.playback_info_cache_max_entries,
+                )
+                if settings.playback_info_cache_enabled
+                else None
             ),
         )
         logger.info(
