@@ -70,10 +70,12 @@ PlaybackInfo 和 Video 请求会在应用日志中产生 `client_identified` 记
 进程重启后清空；某个请求首次探测 STRM 时仍需等待 Jellyfin 返回。
 
 处理 `PlaybackInfo` 时，代理会在内存中缓存有效的 HTTP(S)
-`MediaSource.Id` 与 `Path`。后续 `/Videos/{id}/...` 或 `/videos/{id}/...`
-请求携带匹配的 `MediaSourceId` 时，将返回 `302` 重定向至该 Path；缓存未命中或
+`MediaSource.Id` 与 `Path`。即使客户端绕过 PlaybackInfo 修改，或命中原始响应缓存，
+也会记录直链，同时保持绕过客户端的响应正文原样返回。
+Video 是否重定向仍由 Video 绕过配置控制。后续 `/Videos/{id}/...` 或 `/videos/{id}/...`
+请求携带匹配的 `MediaSourceId` 或 `mediaSourceId` 时，将返回 `302` 重定向至该 Path；缓存未命中或
 Path 不是 HTTP(S) URL 时仍透明代理到 Jellyfin。
-当视频请求没有 `MediaSourceId` 时，会尝试使用 `/Videos/{id}/...` 中的 ID；
+当视频请求没有 `MediaSourceId` 和 `mediaSourceId` 时，会尝试使用 `/Videos/{id}/...` 中的 ID；
 32 位 UUID 的带连字符和无连字符格式视为同一个 ID。
 兼容使用 `/emby/Items/{id}/PlaybackInfo` 查询播放信息、随后通过
 `/emby/api/danmu/{id}/raw` 播放的客户端；raw 路径同样优先使用缓存的远程 Path。

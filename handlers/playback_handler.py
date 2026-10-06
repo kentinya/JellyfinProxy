@@ -59,6 +59,7 @@ class PlaybackHandler:
                     separators=(",", ":"),
                 ).encode("utf-8")
             else:
+                self._service.remember_media_sources(json.loads(cached.body))
                 body = cached.body
             return Response(
                 content=body,
@@ -86,13 +87,17 @@ class PlaybackHandler:
         if active_cache is not None and cache_key is not None:
             active_cache.remember(cache_key, upstream.content)
             logger.info("playback_info_cache status=miss action=stored")
-        modified = await self._service.modify(document) if modify else document
-        body = json.dumps(modified, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        if modify:
+            modified = await self._service.modify(document)
+            body = json.dumps(modified, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        else:
+            self._service.remember_media_sources(document)
+            body = upstream.content
         return Response(
             content=body,
             status_code=upstream.status_code,
             headers={
-                **response_headers(upstream, content_changed=True),
+                **response_headers(upstream, content_changed=modify),
                 "x-jellyfinproxy-cache": "MISS",
             },
             media_type="application/json",

@@ -4,6 +4,7 @@ import asyncio
 import gzip
 
 import httpx
+import pytest
 from fastapi import Request, Response
 
 from handlers.video_handler import VideoHandler
@@ -93,6 +94,49 @@ def test_playback_handler_serves_repeated_post_from_cache() -> None:
     assert second.body == first.body
 
 
+@pytest.mark.parametrize("cache_mode", ["miss", "hit", "disabled"])
+def test_bypassed_playback_preserves_body_and_populates_video_redirect(cache_mode) -> None:
+    original = b'{ "MediaSources": [{"Id":"source-id", "Path":"https://media.example/movie.mkv", "Protocol":"Http", "SupportsTranscoding":true}] }'
+
+    class Client:
+        calls = 0
+
+        async def forward(self, request):
+            self.calls += 1
+            return httpx.Response(200, content=original, headers={"content-type": "application/json"})
+
+    def request(path, query=b""):
+        return Request({
+            "type": "http", "method": "GET", "scheme": "http",
+            "server": ("proxy", 8097), "path": path,
+            "query_string": query, "headers": [(b"user-agent", b"Hills Windows/1.5.4")],
+        })
+
+    cache = PlaybackInfoCache()
+    client = Client()
+    service = PlaybackService(MediaSourceService(MediaResolver(), [ProtocolFileRule()]))
+    handler = PlaybackHandler(client, service, cache)
+    playback_request = request("/Items/item-id/PlaybackInfo")
+    if cache_mode == "hit":
+        cache.remember(asyncio.run(handler._cache_key(playback_request)), original)
+    response = asyncio.run(handler.handle(
+        playback_request, modify=False, use_cache=cache_mode != "disabled",
+    ))
+    assert response.body == original
+    assert client.calls == (0 if cache_mode == "hit" else 1)
+
+    class UnexpectedProxy:
+        async def handle(self, request):
+            pytest.fail("Video should redirect instead of reaching Jellyfin")
+
+    video = VideoHandler(UnexpectedProxy(), service.media_source_cache)
+    redirect = asyncio.run(video.handle(request(
+        "/Videos/item-id/stream.mkv", b"mediaSourceId=source-id",
+    )))
+    assert redirect.status_code == 302
+    assert redirect.headers["location"] == "https://media.example/movie.mkv"
+
+
 def test_playback_cache_normalizes_emby_and_uuid_path_variants() -> None:
     class CountingClient:
         calls = 0
@@ -146,7 +190,13 @@ def test_routes_cover_playback_and_video_variants() -> None:
     assert router.match("/api/danmu/source-id/raw", "GET") is HandlerType.VIDEO
 
 
-def test_video_handler_redirects_to_cached_media_source_path() -> None:
+@pytest.mark.parametrize("query_string", [
+    b"MediaSourceId=source-id",
+    b"mediaSourceId=source-id",
+    b"MediaSourceId=source-id&mediaSourceId=other-id",
+    b"MediaSourceId=&mediaSourceId=source-id",
+])
+def test_video_handler_redirects_to_cached_media_source_path(query_string: bytes) -> None:
     class FailingProxy:
         async def handle(self, request: Request) -> Response:
             raise AssertionError(f"unexpected proxy fallback for {request.url.path}")
@@ -159,7 +209,7 @@ def test_video_handler_redirects_to_cached_media_source_path() -> None:
         "scheme": "http",
         "server": ("proxy", 8097),
         "path": "/videos/item/stream.mkv",
-        "query_string": b"MediaSourceId=source-id",
+        "query_string": query_string,
         "headers": [],
     })
 

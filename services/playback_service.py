@@ -21,6 +21,17 @@ class PlaybackService:
         self._media_source_service = media_source_service
         self.media_source_cache = media_source_cache or MediaSourceCache()
 
+    def remember_media_sources(self, playback_info: Any) -> None:
+        """Record redirect URLs without applying policies or changing the response."""
+        if not isinstance(playback_info, dict):
+            return
+        media_sources = playback_info.get("MediaSources")
+        if not isinstance(media_sources, list):
+            return
+        for source in media_sources:
+            if isinstance(source, dict):
+                self.media_source_cache.remember(source.get("Id"), source.get("Path"))
+
     async def modify(self, playback_info: Any) -> Any:
         if not isinstance(playback_info, dict):
             return playback_info

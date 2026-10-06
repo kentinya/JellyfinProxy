@@ -7,6 +7,16 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## 0.9.2 - 2026-10-06
+
+- Populated video redirect URLs even when clients bypass PlaybackInfo changes,
+  including PlaybackInfo cache hits, while preserving the original response body.
+
+## 0.9.1 - 2026-10-06
+
+- Accepted both `MediaSourceId` and `mediaSourceId` query parameters for cached
+  video redirects, preferring a non-empty `MediaSourceId` when both are supplied.
+
 ## 0.9.0 - 2026-08-06
 
 - Added a bounded, cross-device in-memory TTL cache for successful PlaybackInfo
