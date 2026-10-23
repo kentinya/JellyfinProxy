@@ -3,6 +3,16 @@
 JellyfinProxy 是一个基于 FastAPI 的异步反向代理。它会透明转发 Jellyfin
 流量，并对 Jellyfin 已在 `PlaybackInfo` 响应中解析出的媒体 URL 应用策略。
 
+## 参与开发
+
+先阅读 [AGENTS.md](AGENTS.md) 和[开发流程](docs/development-workflow.md)，当前实施
+范围见 [TASK.md](TASK.md)。只有新增大版本功能需要 A 规划 [Slice](SLICE.md)；
+有 Slice 时 B 负责 Task 规划与独立审查，独立小版本 bug 则由 B 直接规划并收尾。
+Developer 在两条路径中均负责实施、验证和交接。
+
+规划模板：[Task](Task/TEMPLATE.md)、[Slice](Task/SLICE_TEMPLATE.md)。
+流程来源与固定参考版本见[来源说明](docs/references.md)。
+
 ## 源码运行
 
 ```bash
