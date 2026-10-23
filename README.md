@@ -82,9 +82,11 @@ PlaybackInfo 和 Video 请求会在应用日志中产生 `client_identified` 记
 处理 `PlaybackInfo` 时，代理会在内存中缓存有效的 HTTP(S)
 `MediaSource.Id` 与 `Path`。即使客户端绕过 PlaybackInfo 修改，或命中原始响应缓存，
 也会记录直链，同时保持绕过客户端的响应正文原样返回。
-当同一 `MediaSourceId` 后续处理到的 Path 不是可用 HTTP(S) 地址（本地路径、空值、
-非 HTTP(S) 协议、缺少 host 或无法解析）时，代理会删除该 ID 的旧直链，只影响这一个 ID；
-之后再次处理到有效地址会重新建立映射并恢复重定向。
+当同一 `MediaSourceId` 后续传入媒体源缓存的 Path 不是可用 HTTP(S) 地址（本地路径、
+空值、非 HTTP(S) 协议或缺少 host）时，缓存会删除该 ID 的旧直链，只影响这一个 ID；
+之后再次处理到有效地址会重新建立映射并恢复重定向。缓存方法也会捕获自身 URL 解析的
+`ValueError` 并清理该 ID；修改 PlaybackInfo 时，畸形 URL 仍可能在此前的
+MediaResolver 阶段抛出异常，本次修复不覆盖该阶段。
 Video 是否重定向仍由 Video 绕过配置控制。后续 `/Videos/{id}/...` 或 `/videos/{id}/...`
 请求携带匹配的 `MediaSourceId` 或 `mediaSourceId` 时，将返回 `302` 重定向至该 Path；缓存未命中或
 Path 不是 HTTP(S) URL 时仍透明代理到 Jellyfin。

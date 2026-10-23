@@ -12,8 +12,10 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - Dropped the cached media source URL when a later PlaybackInfo response for the
   same `MediaSourceId` carries a Path that is not a usable HTTP(S) URL, so video
   requests fall back to the transparent proxy instead of redirecting to a stale
-  address. Invalid or unparsable paths only remove that single ID and never
-  raise; a later valid URL re-establishes the redirect.
+  address. Paths passed to the media source cache that are invalid or raise
+  `ValueError` during URL parsing only remove that single ID; parsing errors are
+  caught inside the cache method. A later valid URL re-establishes the redirect.
+  Earlier MediaResolver error handling during PlaybackInfo modification is unchanged.
 
 ## 0.9.2 - 2026-10-06
 

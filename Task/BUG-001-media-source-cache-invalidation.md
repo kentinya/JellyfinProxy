@@ -8,7 +8,7 @@
 Task ID: BUG-001
 Work Type: BUGFIX
 Parent Slice: N/A — standalone bug
-Status: READY FOR B REVIEW
+Status: PASS
 Task Base: c96b06e5246ce5edcd48153d4e18212a3193dc18
 Contract Checkpoint: N/A — standalone bug
 Plan Checkpoint: 1f2015c8a12171cd77719e8fe1d44979f91a9398
@@ -253,15 +253,78 @@ Next: B — INDEPENDENT REVIEW OF BUG-001 (PENDING)
 ## B Review Result
 
 ```text
-Reviewed Range: NOT SET
-Reviewer / Independence: NOT SET
-Decision: PENDING
-Acceptance / Required Outcomes all satisfied: PENDING
+Reviewed Range: c96b06e5246ce5edcd48153d4e18212a3193dc18..0228dfdb43d4ab464839f38d63a59696d0d7d8ef
+Documentation Successor Reviewed: b57f519cd35152d7d3efdb46b503868db38f608c
+Reviewer / Independence: 本轮 B；未承担此范围的产品实现，仅审查、隔离验证及文档收尾
+Decision: PASS
+Acceptance / Required Outcomes all satisfied: PASS — AC-1～10
 Slice Required Outcomes all satisfied: N/A — standalone bug
-Evidence / Reuse / NOT RUN: Developer candidate reported; no independent re-verification yet
-Blockers / Remaining Risks: NOT SET
-Next: B — INDEPENDENT REVIEW OF BUG-001 (PENDING); Developer self-report is not a PASS
+Evidence / Reuse / NOT RUN: 见下方独立验证与证据边界
+Blockers / Remaining Risks: 无 P0 / P1；测试精确性建议 P2，见下方
+Next Action: NONE — AUTHORIZED WORK COMPLETE
 ```
 
-B PASS 且全部 AC 满足后，由 B 保存完成报告与审查结果、同步适用文档并撤下根活动
-Task；Task 本身保持 PASS，不使用 CLOSED，不生成 A 最终审查或 Slice PASS。
+### 审查范围与输入身份
+
+- 2026-10-24 在 `/root/JellyfinProxy`、`main` 分支审查完整 Base..Implementation Head，
+  包括范围内 17 个文件，而非只看最后一个提交。产品变动仅为 `remember()`，其余为
+  新增测试、已授权的流程 / 计划文档和行为说明；未改配置、依赖、路由或策略。
+- Base、Plan Checkpoint 均为实现 Head 的祖先；实现 Head 为文档后继 `b57f519c…`
+  的祖先。后继只修改根 TASK 和本报告，未改变执行输入。
+- 逐项比对 Developer 绿色证据 `candidate-sha256.txt`、实现提交和测试时工作区，
+  缓存代码、核心测试、README、CHANGELOG 四份摘要全部一致。复用其单元 / 首次红灯
+  证据；原始日志中确有 65 failed、31 passed、24 deselected、exit 1，未抹去首次失败。
+- 本轮未修改产品代码或仓库测试。README / CHANGELOG 仅将异常防护限定到缓存方法，
+  与原计划明确的 MediaResolver 边界一致，不增加全链异常修复承诺。实现 Head 保持原值。
+
+### 全部验收核对
+
+| AC | B 结论 | 核验依据 |
+|---|---|---|
+| AC-1 | PASS | HTTP(S) 写入 / 覆盖回归；独立路由验证旧 URL 与恢复后的新 URL 均返回 302 |
+| AC-2 | PASS | 原有新增单元覆盖全部类型；独立应用验证本地、空串、显式 null、整数、FTP、缺 host、仅 scheme、缺 Path 精确清理 |
+| AC-3 | PASS | 逐行核对 `urlparse()` 的局部 `ValueError` 捕获与删除分支，复用三种畸形 URL 回归；不扩大到解析链前段 |
+| AC-4 | PASS | 幂等及无效 ID 单元回归，代码在 ID 无效时直接返回且删除使用 `pop(key, None)` |
+| AC-5 | PASS | 归一化函数未改；单元确认普通 ID 大小写规则，应用以大写带连字符 UUID 写入、紧凑小写形式查询并验证删除 |
+| AC-6 | PASS | 每个独立删除场景均在同一应用 / 缓存内完成旧 URL → 无效 → 代理 → 新 URL → 302；另一 ID 始终保持 302 |
+| AC-7 | PASS | 独立 48 个组合：MISS / HIT / 禁用 × 修改 / 绕过 × 8 类无效 Path；HIT 前通过既有缓存绕过客户端恢复旧映射，再确认 HIT 当次清除且不访问上游；绕过正文逐字节相同 |
+| AC-8 | PASS | 每个独立组合验证 6 个既有 Video / danmu 路由，经真实 ProxyHandler 返回 206、原始媒体正文及 Range 响应头，无 Location，上游流已关闭 |
+| AC-9 | PASS | 独立 12 个场景：修改 / 绕过 × 401、500、无效 JSON、缺列表、空列表、仅其他 ID，旧映射均保留；缺 Path / null 则只删实际出现的 ID；其他形状复用全套回归 |
+| AC-10 | PASS | 默认 4096、自定义容量、LRU、删除不额外淘汰的单元回归通过；正常写入和读取的淘汰语义未改 |
+
+独立验证直接经 `create_app()` 的现有通配入口、Router、Dispatcher、客户端策略和实际
+Handler 链；仅替换底层 HTTP transport 为内存上游。旧映射和恢复映射均由已有
+PlaybackInfo 路由与缓存绕过配置建立，未直接操作私有缓存，也未构造新路由。
+
+### 独立验证与证据边界
+
+本轮证据：`artifacts/validation-evidence/BUG-001/20261023T171415-b-review/`
+（UTC 命名，对应上海时间 2026-10-24；未跟踪、本机可读，非远端托管）。
+`identity.json` 记录源码 / 夹具哈希、cwd 和 HEAD，`runs.json` 记录准确命令、环境差异、
+退出码与进程墙钟时间；脚本及原始日志保留在同一目录，可按其中 README 重跑。
+
+- **FAIL，已解释并保留**：首次 `.venv/bin/python -m pytest -q` 因 B 运行器临时设置
+  `LOG_FILE=""` / `ACCESS_LOG_FILE=""`，覆盖配置测试预期，得到 1 failed、133 passed
+  （0.81 s，exit 1，`pytest-full-env-override.txt`）。这是复核夹具错误；未改产品或
+  断言，撤掉环境覆盖后重跑。
+- **PASS**：正常环境 `.venv/bin/python -m pytest -q` → 134 passed in 0.79 s，exit 0
+  （`pytest-full.txt`）。本轮唯一重跑原因是上述明确失败，不再重复聚焦子集。
+- **PASS**：`PYTHONPATH=. .venv/bin/python artifacts/validation-evidence/BUG-001/20261023T171415-b-review/verify_existing_entries.py`
+  → 60 个既有入口场景通过，exit 0（`existing-entries.txt`）；没有外部网络访问。
+- **PASS**：`git diff --check`、文档本地链接与状态一致性检查；本轮仅文档收尾，复用
+  同一可执行输入的上述结果，不重跑产品套件。
+- 测试进程累计墙钟 4.82 s（含首次失败和重跑）；从本轮已记录读取开始到验证结束
+  192.96 s，占比约 2.50%，低于 50%。更早的源码核对及之后的文档收尾未计入该分母。
+- **NOT RUN**：真实 Jellyfin、真实媒体库、真实客户端兼容、性能和打包，均非本次
+  修复验收项；假上游通过不等于这些环境通过。`modify=True` 的 MediaResolver
+  前段畸形 URL 异常处理仍是原计划边界，未扩大探测或实现范围。
+
+### 非阻塞 P2 与收尾
+
+Developer 的 HIT 测试在 MISS 时已删除旧映射，未单独证明 HIT 当次清理；恢复重定向
+集成测试换了新 pipeline，未证明同一实例完整恢复。B 已通过上述既有入口脚本补齐
+两处独立证据，且单元已覆盖同一缓存恢复，因此不构成本次产品阻塞。后续维护相应测试时
+可将这两个顺序断言固化到仓库测试；仅作 P2 建议，不自动创建新 Task 或延长当前授权。
+
+AC-1～10 均已核对，Task 置为 PASS，根 TASK 撤下活动实施入口。原草案、用户方案、
+Developer 完成报告及失败证据保留；无需 Slice / A 收尾，未升级版本、push、发布或部署。
