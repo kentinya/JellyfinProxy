@@ -8,7 +8,7 @@
 - Implementation Head：`0228dfdb43d4ab464839f38d63a59696d0d7d8ef`
 - 独立验证：134 项回归、60 个既有应用入口场景通过；首次环境覆盖失败及重跑如实保留。
 - 真实 Jellyfin / 客户端兼容 / 性能 / 打包：NOT RUN，非本次验收项。
-- Parent Slice：N/A — standalone bug，无需 A 最终审查；版本保持未发布修复状态。
+- Parent Slice：N/A — standalone bug，无需 A 最终审查；本次修复纳入 `v0.9.3` 发布范围。
 
 ```text
 Next Action: NONE — AUTHORIZED WORK COMPLETE

@@ -110,6 +110,8 @@ JellyfinProxy 遵循语义化版本规范。当前版本统一定义在 `version
 ```
 
 每个版本的变更记录保存在 `CHANGELOG.md` 中。
+下载见 [GitHub Releases](https://github.com/kentinya/JellyfinProxy/releases)，
+双架构构建、校验与发布步骤见[发布说明](docs/releasing.md)。
 
 ## 独立二进制
 
