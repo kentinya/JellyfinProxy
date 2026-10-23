@@ -8,14 +8,14 @@
 Task ID: BUG-001
 Work Type: BUGFIX
 Parent Slice: N/A — standalone bug
-Status: PLANNED
+Status: READY FOR B REVIEW
 Task Base: c96b06e5246ce5edcd48153d4e18212a3193dc18
 Contract Checkpoint: N/A — standalone bug
 Plan Checkpoint: 1f2015c8a12171cd77719e8fe1d44979f91a9398
 Difficulty: Low
 Test Level: T4
 Planner / Reviewer: B
-Implementation Head: NOT SET
+Implementation Head: 0228dfdb43d4ab464839f38d63a59696d0d7d8ef
 ```
 
 本任务不依赖 Slice 或 A。Task Base 固定为现有 `v0.9.2` 发布提交，不随规划文档提交
@@ -160,12 +160,95 @@ T4 验证。只改文档且可执行输入相同时可复用运行证据，但�
 
 ## Developer Completion Report
 
-- Changed Files / Implemented：NOT SET
-- Acceptance Mapping：PENDING
-- Tests and Results / Evidence：NOT RUN — 尚未实施修复
-- Decisions / Risks / Remaining Outcomes：AC-1～10 待本次候选验证；解析链边界见上文
-- Plan Checkpoint：1f2015c8a12171cd77719e8fe1d44979f91a9398
-- Implementation Head：NOT SET
+Work performed by Developer on 2026-10-24 in `/root/JellyfinProxy`, branch `main`.
+Admission checked before editing: root `TASK.md` named BUG-001 as the active task,
+`Task Base` `c96b06e5…` and `Plan Checkpoint` `1f2015c8…` both resolved in Git and the
+base is an ancestor of HEAD (`git merge-base --is-ancestor`), `git diff --check` clean,
+and existing user files (the source optimization note, earlier `artifacts/` intake
+directories) left untouched.
+
+### Changed Files / Implemented
+
+- `services/media_source_cache.py` — only `MediaSourceCache.remember()` changed: an
+  accepted `MediaSourceId` is normalized first; a usable HTTP(S) URL keeps the previous
+  store/overwrite/LRU/eviction behaviour; a non-string Path, a Path that parses but is
+  not HTTP(S) with a non-empty netloc, or a Path for which `urlparse()` raises
+  `ValueError` now removes just that cache key (`pop(key, None)`, idempotent).
+  Non-string and empty IDs still return without touching the cache. `get()` and
+  `_normalize_media_source_id()` are unchanged.
+- `tests/test_core.py` — 96 new test cases (134 collected vs 38 before): parametrized
+  cache unit coverage for AC-1…6 and AC-10, plus a `PlaybackPipeline` fake-upstream
+  helper exercising the real `PlaybackHandler` → `PlaybackService` → `MediaSourceCache`
+  → `VideoHandler` → proxy chain for AC-7…9 (HIT/MISS/disabled × modify/bypass × six
+  invalid-Path kinds, six Video route forms, non-clearing responses).
+- `README.md`, `CHANGELOG.md` — behaviour notes only (`## Unreleased` entry); no version
+  bump, no dependency, configuration or handler changes.
+
+No handler, `PlaybackService`, `MediaResolver`, router, policy, JSON-cache or config
+source was modified. Tests use an input shape the existing router/handler already accepts;
+no new entry point was introduced.
+
+### Acceptance Mapping
+
+| AC | Status | Evidence |
+|---|---|---|
+| AC-1 | PASS | `test_media_source_cache_stores_valid_http_urls[*]`, `accepts_uppercase_scheme`, `overwrites_same_media_source_id`; existing 302 tests unchanged |
+| AC-2 | PASS | `test_media_source_cache_clears_existing_mapping_for_invalid_path[*]` (local path, `""`, `None`, non-string, FTP, file, no netloc, scheme only), `invalid_path_only_clears_that_media_source_id[*]` |
+| AC-3 | PASS | `test_media_source_cache_clears_existing_mapping_for_unparsable_path["http://[invalid", "https://[::1", "http://[::1]x"]`, `unparsable_path_keeps_other_media_source_id` — no `ValueError` escapes |
+| AC-4 | PASS | `repeated_invalid_path_is_idempotent`, `ignores_invalid_media_source_id[None,"",42,b"…"]` |
+| AC-5 | PASS | `invalid_path_clears_normalized_uuid_key[compact↔hyphenated]`, `keeps_case_sensitive_non_uuid_ids`, existing `normalizes_uuid_format`, pipeline `[videos-path-uuid]` |
+| AC-6 | PASS | `remapping_after_invalid_path_restores_lookup`, `pipeline_keeps_other_media_source_mapping`, `pipeline_restores_redirect_after_new_valid_path` (4 Video forms → 302) |
+| AC-7 | PASS | `test_playback_pipeline_clears_stale_mapping_for_invalid_path` 36 combinations: HIT asserts `x-jellyfinproxy-cache: HIT` with exactly one upstream call, MISS asserts `MISS`, disabled bypasses the cache; `modify=False` bodies byte-identical to upstream |
+| AC-8 | PASS | Same test plus `test_playback_pipeline_video_falls_back_to_proxy_after_clearing[6 forms]`: real `VideoHandler` reaches the recording proxy, response status/body preserved, no `Location` header |
+| AC-9 | PASS | `upstream_failure_keeps_mappings[401,500]`, `unparsable_json_keeps_mappings`, `absent_media_source_keeps_mappings[6 bodies × modify]`, `missing_path_clears_only_that_media_source_id` |
+| AC-10 | PASS | `default_capacity_keeps_lru_behavior` (4096 fill + eviction of the LRU entry), `capacity_handles_fill_plus_one`, `clearing_one_entry_does_not_evict_others`, existing `test_config` default |
+
+### Tests and Results / Evidence
+
+Evidence root: `artifacts/validation-evidence/BUG-001/` (local working tree only, untracked;
+not remotely hosted).
+
+- First failure (pre-fix, new tests only):
+  `20261024T010634-run1-red/` — `.venv/bin/python -m pytest tests/test_core.py -k "media_source_cache or playback_pipeline" -q`
+  → 65 failed, 31 passed, 24 deselected, exit 1 at source HEAD `c9164177…` with product
+  code unmodified (`pytest-red.txt`, `exit-code.txt`).
+- Final candidate gate: `20261024T010753-run2-green/`
+  - `.venv/bin/python -m pytest -q` → 134 passed in 0.78 s, exit 0 (`pytest-full.txt`)
+  - `.venv/bin/python -m pytest tests/test_core.py -k "media_source_cache or playback_pipeline" -q`
+    → 98 passed, 24 deselected in 0.56 s, exit 0 (`pytest-focused.txt`) — reuse of the
+    full-suite input, not repeated mechanically
+  - `git diff --check` → exit 0 (`git-diff-check.txt`)
+- Environment: Python 3.11.2, pytest 9.1.1, httpx 0.28.1, fastapi 0.142.2, starlette 1.7.0,
+  Linux 6.1.0-45-amd64. Config/fixtures: library defaults plus in-test `MediaSourceCache`
+  capacities and a fake upstream; no real service contacted.
+
+### Decisions / Risks / Remaining Outcomes
+
+- Committed candidate: `Implementation Head` = `0228dfdb43d4ab464839f38d63a59696d0d7d8ef`
+  (`fix: drop stale media source mapping on unusable path`), parent `c9164177…`, so the
+  reviewed range `c96b06e5…0228dfdb` contains this task's only product change. Post-commit
+  digests of the four files equal the green-run digests in
+  `20261024T010753-run2-green/candidate-sha256.txt`, so the recorded test run is the same
+  executable input as the commit. The full suite and `git diff --check` were re-run after
+  the commit: 134 passed, exit 0.
+- Accepted behaviour change: a MediaSource that reappears with an unusable Path now loses
+  its redirect and falls back to the transparent proxy (that is the intended fix). A
+  transient malformed Path therefore costs one proxy fallback until a valid URL is seen again.
+- `modify=True` still runs `MediaResolver` before `remember()`; malformed URLs may raise in
+  that earlier stage. Unchanged and out of scope, as written in the plan's known boundaries.
+- Local fake-upstream evidence only. Real Jellyfin, real client compatibility, performance
+  and packaging remain NOT RUN and must not be inferred from these results.
+- Raw pytest logs stay untracked under `artifacts/validation-evidence/BUG-001/` (continuing
+  the existing local-evidence practice) because their own trailing whitespace would trip
+  `git diff --check` if committed.
+- No product version bump, push, release or deployment was performed.
+
+```text
+Implementation Head: 0228dfdb43d4ab464839f38d63a59696d0d7d8ef
+Baseline / Parent: c91641777adfd294e1736bf5225448f30f228cd3 (descends from Task Base c96b06e5…)
+Evidence: artifacts/validation-evidence/BUG-001/20261024T010634-run1-red/ (untracked, local), .../20261024T010753-run2-green/ (untracked, local)
+Next: B — INDEPENDENT REVIEW OF BUG-001 (PENDING)
+```
 
 ## B Review Result
 
@@ -175,9 +258,9 @@ Reviewer / Independence: NOT SET
 Decision: PENDING
 Acceptance / Required Outcomes all satisfied: PENDING
 Slice Required Outcomes all satisfied: N/A — standalone bug
-Evidence / Reuse / NOT RUN: NOT RUN — 尚无修复候选
+Evidence / Reuse / NOT RUN: Developer candidate reported; no independent re-verification yet
 Blockers / Remaining Risks: NOT SET
-Next: DEVELOPER — IMPLEMENT BUG-001 AFTER PLAN CHECKPOINT VERIFICATION
+Next: B — INDEPENDENT REVIEW OF BUG-001 (PENDING); Developer self-report is not a PASS
 ```
 
 B PASS 且全部 AC 满足后，由 B 保存完成报告与审查结果、同步适用文档并撤下根活动

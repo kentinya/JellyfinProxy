@@ -4,14 +4,14 @@
 Task ID: BUG-001
 Work Type: BUGFIX
 Parent Slice: N/A — standalone bug
-Status: PLANNED
+Status: READY FOR B REVIEW
 Task Base: c96b06e5246ce5edcd48153d4e18212a3193dc18
 Contract Checkpoint: N/A — standalone bug
 Plan Checkpoint: 1f2015c8a12171cd77719e8fe1d44979f91a9398
 Difficulty: Low
 Test Level: T4
 Planner / Reviewer: B
-Implementation Head: NOT SET
+Implementation Head: 0228dfdb43d4ab464839f38d63a59696d0d7d8ef
 ```
 
 完整计划与后续完成报告、独立审查记录统一维护在
@@ -30,11 +30,17 @@ Developer 按计划实施；无需 A 或 Slice。
 
 ## 开工与交接
 
-- 正式计划已提交并记录实际 SHA；Developer 开工前核对该提交、固定 Base 和已有改动。
-- 开始实施时同步为 `IN PROGRESS`；按 T4 完成全部回归与计划指定的缓存 / 播放链验证。
-- 完成后填写真实实现 Head 和证据，交为 `READY FOR B REVIEW`；独立 B 审查仍为 PENDING。
-- 当前仅完成规划登记，尚无产品实现、修复验证或审查 PASS。
+- Developer 已完成实现：`services/media_source_cache.py` 的 `remember()` 现在会在同一
+  MediaSourceId 收到不可用 Path 时只删除该 ID 的旧映射；Video 未命中沿既有入口回退
+  普通代理，后续有效 URL 可恢复 302。完整报告见
+  [Task/BUG-001-media-source-cache-invalidation.md](Task/BUG-001-media-source-cache-invalidation.md)。
+- 候选已提交：`Implementation Head` = `0228dfdb43d4ab464839f38d63a59696d0d7d8ef`（父提交
+  `c9164177…`）。本轮测试日志仍作为未跟踪本地证据保存在
+  `artifacts/validation-evidence/BUG-001/`。
+- T4 本地门槛：`.venv/bin/python -m pytest` → 134 passed；`git diff --check` → exit 0；
+  修复前首次失败记录在同一证据目录的 `-run1-red`。真实 Jellyfin、客户端兼容与打包 NOT RUN。
+- 当前状态为 `READY FOR B REVIEW`；独立 B 审查仍为 PENDING，Developer 自检不构成 PASS。
 
 ```text
-Next Action: DEVELOPER — IMPLEMENT BUG-001 AFTER PLAN CHECKPOINT VERIFICATION
+Next Action: B — INDEPENDENT REVIEW OF BUG-001 (PENDING)
 ```
