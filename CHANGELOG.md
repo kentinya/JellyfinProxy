@@ -7,6 +7,14 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## Unreleased
+
+- Dropped the cached media source URL when a later PlaybackInfo response for the
+  same `MediaSourceId` carries a Path that is not a usable HTTP(S) URL, so video
+  requests fall back to the transparent proxy instead of redirecting to a stale
+  address. Invalid or unparsable paths only remove that single ID and never
+  raise; a later valid URL re-establishes the redirect.
+
 ## 0.9.2 - 2026-10-06
 
 - Populated video redirect URLs even when clients bypass PlaybackInfo changes,

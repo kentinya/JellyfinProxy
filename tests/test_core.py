@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import gzip
+import json
 
 import httpx
 import pytest
@@ -135,6 +136,244 @@ def test_bypassed_playback_preserves_body_and_populates_video_redirect(cache_mod
     )))
     assert redirect.status_code == 302
     assert redirect.headers["location"] == "https://media.example/movie.mkv"
+
+
+OLD_VIDEO_URL = "https://media.example/old.mkv"
+
+
+class PlaybackPipeline:
+    """Minimal fake-upstream pipeline that exposes the real handler chain."""
+
+    def __init__(self, body: bytes, *, status_code: int = 200) -> None:
+        self.body = body
+        self.status_code = status_code
+        self.calls = 0
+        self.cache = PlaybackInfoCache()
+        self.service = PlaybackService(
+            MediaSourceService(MediaResolver(), [ProtocolFileRule()]),
+        )
+        self.handler = PlaybackHandler(self, self.service, self.cache)  # type: ignore[arg-type]
+
+    async def forward(self, request: Request) -> httpx.Response:
+        self.calls += 1
+        return httpx.Response(
+            self.status_code,
+            content=self.body,
+            headers={"content-type": "application/json"},
+        )
+
+    def request(self, path: str = "/Items/item-id/PlaybackInfo", query: bytes = b"") -> Request:
+        return Request({
+            "type": "http", "method": "GET", "scheme": "http",
+            "server": ("proxy", 8097), "path": path,
+            "query_string": query, "headers": [],
+        })
+
+    def playback(self, *args, **kwargs) -> Response:
+        return asyncio.run(self.handler.handle(*args, **kwargs))
+
+    def prefilled_playback(self, **kwargs) -> Response:
+        """Fill the JSON cache, then serve it from the cache (HIT) path."""
+        probe = self.request()
+        asyncio.run(self.handler.handle(probe, **kwargs))
+        return asyncio.run(self.handler.handle(probe, **kwargs))
+
+
+INVALID_PIPELINE_PATHS = [
+    pytest.param("/media/movie.mkv", id="local-path"),
+    pytest.param("", id="empty-path"),
+    pytest.param(None, id="none-path"),
+    pytest.param("ftp://media.example/movie.mkv", id="ftp-scheme"),
+    pytest.param("https:///movie.mkv", id="missing-netloc"),
+    pytest.param("http://", id="scheme-only"),
+]
+
+
+def playback_document(path, media_source_id: str = "source-id") -> bytes:
+    source: dict[str, object] = {"Id": media_source_id}
+    if path is not None:
+        source["Path"] = path
+    return json.dumps({"MediaSources": [source]}).encode("utf-8")
+
+
+@pytest.mark.parametrize("cache_mode", ["miss", "hit", "disabled"])
+@pytest.mark.parametrize("modify", [True, False])
+@pytest.mark.parametrize("path", INVALID_PIPELINE_PATHS)
+def test_playback_pipeline_clears_stale_mapping_for_invalid_path(
+    cache_mode, modify, path
+) -> None:
+    body = playback_document(path)
+    pipeline = PlaybackPipeline(body)
+    pipeline.service.media_source_cache.remember("source-id", OLD_VIDEO_URL)
+
+    if cache_mode == "hit":
+        response = pipeline.prefilled_playback(modify=modify)
+        assert pipeline.calls == 1
+        assert response.headers["x-jellyfinproxy-cache"] == "HIT"
+    else:
+        response = pipeline.playback(
+            pipeline.request(), modify=modify, use_cache=cache_mode != "disabled",
+        )
+        assert pipeline.calls == 1
+        if cache_mode == "miss":
+            assert response.headers["x-jellyfinproxy-cache"] == "MISS"
+
+    assert pipeline.service.media_source_cache.get("source-id") is None
+    if modify:
+        returned = json.loads(response.body)["MediaSources"][0]
+        assert returned.get("Path") in (None, path)
+    else:
+        assert response.body == body
+
+    class RecordingProxy:
+        calls = 0
+
+        async def handle(self, request: Request) -> Response:
+            self.calls += 1
+            return Response(content=b"media-bytes", status_code=206)
+
+    proxy = RecordingProxy()
+    video = VideoHandler(proxy, pipeline.service.media_source_cache)  # type: ignore[arg-type]
+    video_request = pipeline.request(
+        "/Videos/source-id/stream.mkv",
+        b"MediaSourceId=source-id",
+    )
+    played = asyncio.run(video.handle(video_request))
+    assert proxy.calls == 1
+    assert played.status_code == 206
+    assert played.body == b"media-bytes"
+    assert "location" not in played.headers
+
+
+def test_playback_pipeline_keeps_other_media_source_mapping() -> None:
+    body = playback_document("/media/movie.mkv", "source-a")
+    pipeline = PlaybackPipeline(body)
+    pipeline.service.media_source_cache.remember("source-a", OLD_VIDEO_URL)
+    pipeline.service.media_source_cache.remember("source-b", "https://media.example/b.mkv")
+
+    pipeline.playback(pipeline.request(), modify=False)
+
+    assert pipeline.service.media_source_cache.get("source-a") is None
+    assert pipeline.service.media_source_cache.get("source-b") == "https://media.example/b.mkv"
+
+
+def test_playback_pipeline_restores_redirect_after_new_valid_path() -> None:
+    pipeline = PlaybackPipeline(playback_document("/media/movie.mkv"))
+    pipeline.service.media_source_cache.remember("source-id", OLD_VIDEO_URL)
+    pipeline.playback(pipeline.request(), modify=False)
+    assert pipeline.service.media_source_cache.get("source-id") is None
+
+    restored = PlaybackPipeline(playback_document("https://media.example/new.mkv"))
+    restored.service.media_source_cache.remember("source-id", OLD_VIDEO_URL)
+    restored.playback(restored.request(), modify=False)
+
+    class UnexpectedProxy:
+        async def handle(self, request: Request) -> Response:
+            pytest.fail("Video should redirect after a new valid path")
+
+    for path, query in (
+        ("/Videos/source-id/stream.mkv", b"MediaSourceId=source-id"),
+        ("/videos/source-id/stream.mkv", b"mediaSourceId=source-id"),
+        ("/Videos/source-id/stream", b""),
+        ("/emby/api/danmu/source-id/raw", b""),
+    ):
+        response = asyncio.run(
+            VideoHandler(UnexpectedProxy(), restored.service.media_source_cache).handle(  # type: ignore[arg-type]
+                restored.request(path, query),
+            )
+        )
+        assert response.status_code == 302
+        assert response.headers["location"] == "https://media.example/new.mkv"
+
+
+@pytest.mark.parametrize(("video_path", "query"), [
+    pytest.param("/Videos/source-id/stream.mkv", b"MediaSourceId=source-id", id="query-media-source-id"),
+    pytest.param("/videos/source-id/stream.mkv", b"mediaSourceId=source-id", id="query-lower-media-source-id"),
+    pytest.param("/Videos/source-id/stream", b"", id="videos-path-id"),
+    pytest.param("/Videos/788be25d-f930-7eb4-19a2-316de9f9d699/stream", b"", id="videos-path-uuid"),
+    pytest.param("/emby/api/danmu/source-id/raw", b"", id="emby-danmu-raw"),
+    pytest.param("/api/danmu/source-id/raw", b"", id="danmu-raw"),
+])
+def test_playback_pipeline_video_falls_back_to_proxy_after_clearing(video_path, query) -> None:
+    media_source_id = (
+        "788be25df9307eb419a2316de9f9d699" if "788be25d" in video_path else "source-id"
+    )
+    pipeline = PlaybackPipeline(playback_document(None, media_source_id))
+    pipeline.service.media_source_cache.remember(media_source_id, OLD_VIDEO_URL)
+    pipeline.playback(pipeline.request(), modify=False)
+    assert pipeline.service.media_source_cache.get(media_source_id) is None
+
+    recorded: list[str] = []
+
+    class RecordingProxy:
+        async def handle(self, request: Request) -> Response:
+            recorded.append(request.url.path)
+            return Response(content=b"proxied", status_code=200)
+
+    response = asyncio.run(
+        VideoHandler(RecordingProxy(), pipeline.service.media_source_cache).handle(  # type: ignore[arg-type]
+            pipeline.request(video_path, query),
+        )
+    )
+
+    assert recorded == [video_path]
+    assert response.status_code == 200
+    assert response.body == b"proxied"
+
+
+@pytest.mark.parametrize("status_code", [401, 500])
+def test_playback_pipeline_upstream_failure_keeps_mappings(status_code) -> None:
+    pipeline = PlaybackPipeline(b'{"MediaSources": []}', status_code=status_code)
+    pipeline.service.media_source_cache.remember("source-id", OLD_VIDEO_URL)
+
+    response = pipeline.playback(pipeline.request(), modify=True)
+
+    assert response.status_code == status_code
+    assert pipeline.service.media_source_cache.get("source-id") == OLD_VIDEO_URL
+
+
+def test_playback_pipeline_unparsable_json_keeps_mappings() -> None:
+    pipeline = PlaybackPipeline(b"not-json")
+    pipeline.service.media_source_cache.remember("source-id", OLD_VIDEO_URL)
+
+    response = pipeline.playback(pipeline.request(), modify=True)
+
+    assert response.status_code == 200
+    assert response.body == b"not-json"
+    assert pipeline.service.media_source_cache.get("source-id") == OLD_VIDEO_URL
+
+
+@pytest.mark.parametrize("body", [
+    pytest.param(b'{"MediaSources": []}', id="empty-list"),
+    pytest.param(b"{}", id="missing-list"),
+    pytest.param(b'{"MediaSources": "oops"}', id="non-list"),
+    pytest.param(b'{"MediaSources": ["text"]}', id="non-dict-source"),
+    pytest.param(b'{"MediaSources": [{"Id": "other-id", "Path": "https://media.example/other.mkv"}]}', id="other-source"),
+    pytest.param(b'{"MediaSources": [{"Path": "https://media.example/no-id.mkv"}]}', id="missing-id"),
+])
+@pytest.mark.parametrize("modify", [True, False])
+def test_playback_pipeline_absent_media_source_keeps_mappings(body, modify) -> None:
+    pipeline = PlaybackPipeline(body)
+    pipeline.service.media_source_cache.remember("source-id", OLD_VIDEO_URL)
+
+    pipeline.playback(pipeline.request(), modify=modify)
+
+    assert pipeline.service.media_source_cache.get("source-id") == OLD_VIDEO_URL
+
+
+def test_playback_pipeline_missing_path_clears_only_that_media_source_id() -> None:
+    body = json.dumps({"MediaSources": [
+        {"Id": "source-a"},
+        {"Id": "source-b", "Path": "https://media.example/b.mkv"},
+    ]}).encode("utf-8")
+    pipeline = PlaybackPipeline(body)
+    pipeline.service.media_source_cache.remember("source-a", OLD_VIDEO_URL)
+    pipeline.service.media_source_cache.remember("source-b", "https://media.example/stale-b.mkv")
+
+    pipeline.playback(pipeline.request(), modify=False)
+
+    assert pipeline.service.media_source_cache.get("source-a") is None
+    assert pipeline.service.media_source_cache.get("source-b") == "https://media.example/b.mkv"
 
 
 def test_playback_cache_normalizes_emby_and_uuid_path_variants() -> None:
@@ -324,6 +563,165 @@ def test_media_source_cache_normalizes_uuid_format() -> None:
         cache.get("788BE25D-F930-7EB4-19A2-316DE9F9D699")
         == "https://media.example/movie.mkv"
     )
+
+
+OLD_URL = "https://media.example/old.mkv"
+NEW_URL = "https://media.example/new.mkv?token=new"
+INVALID_PATH_CASES = [
+    pytest.param("/media/movie.mkv", id="local-path"),
+    pytest.param("", id="empty-string"),
+    pytest.param(None, id="none"),
+    pytest.param(1234, id="integer"),
+    pytest.param("ftp://media.example/movie.mkv", id="ftp-scheme"),
+    pytest.param("file:///media/movie.mkv", id="file-scheme"),
+    pytest.param("https:///movie.mkv", id="missing-netloc"),
+    pytest.param("http://", id="scheme-only"),
+]
+
+
+@pytest.mark.parametrize("path", ["https://media.example/movie.mkv", "http://media.example/movie.mkv"])
+def test_media_source_cache_stores_valid_http_urls(path) -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-id", path)
+    assert cache.get("source-id") == path
+
+
+def test_media_source_cache_accepts_uppercase_scheme() -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-id", "HTTPS://media.example/movie.mkv")
+    assert cache.get("source-id") == "HTTPS://media.example/movie.mkv"
+
+
+def test_media_source_cache_overwrites_same_media_source_id() -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-id", OLD_URL)
+    cache.remember("source-id", NEW_URL)
+    assert cache.get("source-id") == NEW_URL
+
+
+@pytest.mark.parametrize("path", INVALID_PATH_CASES)
+def test_media_source_cache_clears_existing_mapping_for_invalid_path(path) -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-id", OLD_URL)
+    cache.remember("source-id", path)
+    assert cache.get("source-id") is None
+
+
+@pytest.mark.parametrize("path", INVALID_PATH_CASES)
+def test_media_source_cache_invalid_path_only_clears_that_media_source_id(path) -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-a", OLD_URL)
+    cache.remember("source-b", "https://media.example/other.mkv")
+    cache.remember("source-a", path)
+    assert cache.get("source-a") is None
+    assert cache.get("source-b") == "https://media.example/other.mkv"
+
+
+@pytest.mark.parametrize("path", ["http://[invalid", "https://[::1", "http://[::1]x"])
+def test_media_source_cache_clears_existing_mapping_for_unparsable_path(path) -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-id", OLD_URL)
+    cache.remember("source-id", path)
+    assert cache.get("source-id") is None
+
+
+def test_media_source_cache_unparsable_path_keeps_other_media_source_id() -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-a", OLD_URL)
+    cache.remember("source-b", "https://media.example/other.mkv")
+    cache.remember("source-a", "http://[invalid")
+    assert cache.get("source-a") is None
+    assert cache.get("source-b") == "https://media.example/other.mkv"
+
+
+def test_media_source_cache_repeated_invalid_path_is_idempotent() -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-id", "/media/movie.mkv")
+    cache.remember("source-id", None)
+    cache.remember("source-id", "http://[invalid")
+    assert cache.get("source-id") is None
+
+
+@pytest.mark.parametrize("media_source_id", [None, "", 42, b"source-id"])
+def test_media_source_cache_ignores_invalid_media_source_id(media_source_id) -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-id", OLD_URL)
+    cache.remember(media_source_id, "/media/movie.mkv")
+    cache.remember(media_source_id, None)
+    assert cache.get("source-id") == OLD_URL
+
+
+@pytest.mark.parametrize(
+    ("stored_id", "cleared_id"),
+    [
+        pytest.param(
+            "788be25df9307eb419a2316de9f9d699",
+            "788BE25D-F930-7EB4-19A2-316DE9F9D699",
+            id="compact-stored-hyphenated-cleared",
+        ),
+        pytest.param(
+            "788BE25D-F930-7EB4-19A2-316DE9F9D699",
+            "788be25df9307eb419a2316de9f9d699",
+            id="hyphenated-stored-compact-cleared",
+        ),
+    ],
+)
+def test_media_source_cache_invalid_path_clears_normalized_uuid_key(stored_id, cleared_id) -> None:
+    cache = MediaSourceCache()
+    cache.remember(stored_id, OLD_URL)
+    cache.remember(cleared_id, "/media/movie.mkv")
+    assert cache.get(stored_id) is None
+    assert cache.get(cleared_id) is None
+
+
+def test_media_source_cache_keeps_case_sensitive_non_uuid_ids() -> None:
+    cache = MediaSourceCache()
+    cache.remember("Source-Id", OLD_URL)
+    cache.remember("source-id", "/media/movie.mkv")
+    assert cache.get("Source-Id") == OLD_URL
+    assert cache.get("source-id") is None
+
+
+def test_media_source_cache_remapping_after_invalid_path_restores_lookup() -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-id", OLD_URL)
+    cache.remember("source-id", None)
+    assert cache.get("source-id") is None
+    cache.remember("source-id", NEW_URL)
+    assert cache.get("source-id") == NEW_URL
+
+
+def test_media_source_cache_default_capacity_keeps_lru_behavior() -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-id", OLD_URL)
+    for index in range(4095):
+        cache.remember(f"source-{index}", f"https://media.example/{index}.mkv")
+    assert cache.get("source-0") == "https://media.example/0.mkv"
+    cache.remember("source-4095", "https://media.example/4095.mkv")
+    assert cache.get("source-id") is None
+    assert cache.get("source-0") == "https://media.example/0.mkv"
+
+
+def test_media_source_cache_capacity_handles_fill_plus_one() -> None:
+    cache = MediaSourceCache(max_entries=2)
+    cache.remember("source-a", OLD_URL)
+    for index in range(2):
+        cache.remember(f"source-{index}", f"https://media.example/{index}.mkv")
+    assert cache.get("source-a") is None
+    assert cache.get("source-0") == "https://media.example/0.mkv"
+    assert cache.get("source-1") == "https://media.example/1.mkv"
+
+
+def test_media_source_cache_clearing_one_entry_does_not_evict_others() -> None:
+    cache = MediaSourceCache(max_entries=2)
+    cache.remember("source-a", OLD_URL)
+    cache.remember("source-b", "https://media.example/b.mkv")
+    cache.remember("source-a", "/media/movie.mkv")
+    assert cache.get("source-a") is None
+    assert cache.get("source-b") == "https://media.example/b.mkv"
+    cache.remember("source-c", "https://media.example/c.mkv")
+    assert cache.get("source-b") == "https://media.example/b.mkv"
+    assert cache.get("source-c") == "https://media.example/c.mkv"
 
 
 def test_client_bypass_is_case_insensitive_across_headers() -> None:

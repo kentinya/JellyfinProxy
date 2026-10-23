@@ -21,17 +21,26 @@ class MediaSourceCache:
     def remember(self, media_source_id: object, path: object) -> None:
         if not isinstance(media_source_id, str) or not media_source_id:
             return
-        if not isinstance(path, str):
-            return
-        parsed = urlparse(path)
-        if parsed.scheme.casefold() not in {"http", "https"} or not parsed.netloc:
-            return
-
         cache_key = _normalize_media_source_id(media_source_id)
-        self._paths[cache_key] = path
-        self._paths.move_to_end(cache_key)
-        while len(self._paths) > self._max_entries:
-            self._paths.popitem(last=False)
+
+        if isinstance(path, str):
+            try:
+                parsed = urlparse(path)
+            except ValueError:
+                parsed = None
+            if (
+                parsed is not None
+                and parsed.scheme.casefold() in {"http", "https"}
+                and parsed.netloc
+            ):
+                self._paths[cache_key] = path
+                self._paths.move_to_end(cache_key)
+                while len(self._paths) > self._max_entries:
+                    self._paths.popitem(last=False)
+                return
+
+        # An unusable Path means this MediaSourceId no longer has a known URL.
+        self._paths.pop(cache_key, None)
 
     def get(self, media_source_id: str) -> str | None:
         cache_key = _normalize_media_source_id(media_source_id)
