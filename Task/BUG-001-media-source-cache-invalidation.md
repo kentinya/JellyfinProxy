@@ -11,7 +11,7 @@ Parent Slice: N/A — standalone bug
 Status: PLANNED
 Task Base: c96b06e5246ce5edcd48153d4e18212a3193dc18
 Contract Checkpoint: N/A — standalone bug
-Plan Checkpoint: NOT SET
+Plan Checkpoint: 1f2015c8a12171cd77719e8fe1d44979f91a9398
 Difficulty: Low
 Test Level: T4
 Planner / Reviewer: B
@@ -19,7 +19,7 @@ Implementation Head: NOT SET
 ```
 
 本任务不依赖 Slice 或 A。Task Base 固定为现有 `v0.9.2` 发布提交，不随规划文档提交
-前移。计划提交后，另行记录其真实完整 SHA 作为 Plan Checkpoint，避免自引用。
+前移。Plan Checkpoint 指向已提交的正式计划；当前纯文档后继补记真实 SHA，避免自引用。
 
 ## Goal / 目标与结果映射
 
@@ -164,7 +164,7 @@ T4 验证。只改文档且可执行输入相同时可复用运行证据，但�
 - Acceptance Mapping：PENDING
 - Tests and Results / Evidence：NOT RUN — 尚未实施修复
 - Decisions / Risks / Remaining Outcomes：AC-1～10 待本次候选验证；解析链边界见上文
-- Plan Checkpoint：NOT SET
+- Plan Checkpoint：1f2015c8a12171cd77719e8fe1d44979f91a9398
 - Implementation Head：NOT SET
 
 ## B Review Result

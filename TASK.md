@@ -7,7 +7,7 @@ Parent Slice: N/A — standalone bug
 Status: PLANNED
 Task Base: c96b06e5246ce5edcd48153d4e18212a3193dc18
 Contract Checkpoint: N/A — standalone bug
-Plan Checkpoint: NOT SET
+Plan Checkpoint: 1f2015c8a12171cd77719e8fe1d44979f91a9398
 Difficulty: Low
 Test Level: T4
 Planner / Reviewer: B
@@ -30,7 +30,7 @@ Developer 按计划实施；无需 A 或 Slice。
 
 ## 开工与交接
 
-- 计划检查点形成后记录实际 SHA；Developer 开工前核对该提交、固定 Base 和已有改动。
+- 正式计划已提交并记录实际 SHA；Developer 开工前核对该提交、固定 Base 和已有改动。
 - 开始实施时同步为 `IN PROGRESS`；按 T4 完成全部回归与计划指定的缓存 / 播放链验证。
 - 完成后填写真实实现 Head 和证据，交为 `READY FOR B REVIEW`；独立 B 审查仍为 PENDING。
 - 当前仅完成规划登记，尚无产品实现、修复验证或审查 PASS。
