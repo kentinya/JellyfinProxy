@@ -1,5 +1,11 @@
 # NO ACTIVE IMPLEMENTATION TASK
 
+本轮已激活 [Slice S1 — 删除完整 JSON 缓存、按配置修改播放字段并验证既有能力](Task/S1-remove-playback-info-json-cache.md)，
+状态为 ACTIVE，合同 v3 包含按 TOML 字段配置修改及真实 Jellyfin 12.3 必需验收；
+字段配置缺省 / 空表均不改，仅显式配置的字段生效。
+当前尚未发布 B Task 计划，下一步由 B 基于激活检查点规划首个 Task（建议 S1.1）；
+产品实施和真实服务验证均未开始。以下 BUG-001 为已完成的历史任务，不构成本次验证结果。
+
 独立 bug [BUG-001 — MediaSourceCache 失效映射清理](Task/BUG-001-media-source-cache-invalidation.md)
 已完成独立 B 审查，状态为 **PASS**，AC-1～10 全部满足。完整计划、Developer 完成报告、
 审查范围、证据及非阻塞 P2 建议保存在该任务记录中。
@@ -11,5 +17,5 @@
 - Parent Slice：N/A — standalone bug，无需 A 最终审查；本次修复纳入 `v0.9.3` 发布范围。
 
 ```text
-Next Action: NONE — AUTHORIZED WORK COMPLETE
+Next Action: NONE — AUTHORIZED SLICE ACTIVATION COMPLETE
 ```

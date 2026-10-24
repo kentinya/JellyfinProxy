@@ -1,10 +1,21 @@
-# NO ACTIVE SLICE
+# Slice S1 — 删除完整 JSON 缓存、按配置修改播放字段并验证既有能力
 
-当前未规划或激活大版本功能 Slice。本次仅引入开发流程，不对既有实现补签验收。
+已按本轮用户明确要求激活
+[S1 — 删除完整 JSON 缓存、按配置修改播放字段并验证既有能力](Task/S1-remove-playback-info-json-cache.md)，
+状态为 **ACTIVE**，激活日期为 **2026-10-24**。真实 Jellyfin Server **12.3** 的功能保留验证
+是必需验收；合同激活不代表已实施或验证通过。
 
-新增大版本功能时由 A 使用 [Slice 模板](Task/SLICE_TEMPLATE.md) 规划。
-独立小版本 bug 由 B 直接规划 [Task](TASK.md)，不要求修改或激活本文件。
+合同 v3 已纳入按 TOML 字段配置修改能力，包含响应根字段 / 媒体源字段两个作用域；
+按用户最新要求，未配置 / 空表均不改字段，取消旧两项自动修改，仅显式表列出的字段生效。
+绕过优先、直链一致性及真实验证要求保留；对应 RO-9 和 F-01～08。
+
+- Slice Base：`6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5`。
+- Contract Checkpoint：NOT SET（创建本次激活提交后由 Git 解析并补记）。
+- Implementation Head：NOT SET。
+- 真实 Jellyfin 验证：NOT RUN；独立 B / A 审查：PENDING。
+- 后续由 B 根据已提交合同与实际基线规划首个 Task，建议从 S1.1 真实 12.3 验证基线开始；
+  根 [TASK](TASK.md) 暂无活动实施任务。
 
 ```text
-Next Action: NONE — NO AUTHORIZED MAJOR FEATURE
+Next Action: NONE — AUTHORIZED SLICE ACTIVATION COMPLETE
 ```
