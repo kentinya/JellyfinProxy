@@ -22,10 +22,11 @@ A Final Review: PENDING
 ```
 
 按用户本轮“激活 Slice”要求，本合同及规范性字段补充已激活；Base 保持固定。
-Contract Checkpoint 已从 Git 解析，并由本次纯文档后继补记；该后继不移动 Base，不是实现候选。
-后续由 B 发布首个 Task 计划；当前未发布实施任务，也未开始产品实现或真实服务验证。
+Contract Checkpoint 已从 Git 解析，并由激活后的纯文档提交补记；该后继不移动 Base，不是实现候选。
+首个 B Task [S1.1 — 真实 12.3 验证基线](S1.1-real-jellyfin-12.3-baseline.md)已发布为 PLANNED；
+尚未开始工具 / 产品实现或真实服务验证。
 激活前已有本会话的根 SLICE / TASK 修改、三份未跟踪方案文档及 `artifacts/`；
-本次只提交前五份合同相关文档，保留既有证据与用户文件。
+激活时只提交前五份合同相关文档，保留既有证据与用户文件。
 
 ## 用户目标
 
@@ -238,12 +239,12 @@ B 核对完整 Task 范围、真实输入和原始证据，并独立复现前述
 
 ## Task 索引
 
-以下是 A 的建议交付顺序，不是已发布的 B Task 计划；精确 AC、命令、Task Base 与拆分由 B
-依据已激活合同与实际结果逐步制定，不提前制造后继 Head。
+以下交付顺序由 A 建议；S1.1 已由 B 发布完整计划，其余仍为建议单元。精确 AC、命令、
+Task Base 与拆分由 B 依据已激活合同与实际结果逐步制定，不提前制造后继 Head。
 
 | 建议单元 | 完整交付闭环 | 依赖 / 结果映射 | 当前状态 |
 |---|---|---|---|
-| S1.1 — 真实 12.3 验证基线 | 固定实际构建，准备隔离库 / 观测与回归工具，取得 J、B-on、B-off 基线及可重复输入，明确旧路由限制 | 首个 Task；支撑 RO-2～7 | 尚未由 B 规划 / NOT RUN |
+| [S1.1 — 真实 12.3 验证基线](S1.1-real-jellyfin-12.3-baseline.md) | 固定实际构建，准备隔离库 / 观测与回归工具，取得 J、B-on、B-off 基线及可重复输入，明确旧路由限制 | 首个 Task；支撑 RO-1～8 的基线，准备 RO-9 对照 | PLANNED；实施 / 真实基线 NOT RUN；B 审查 PENDING |
 | S1.2 — 缓存撤除与保留能力回归 | 原子完成 JSON 缓存撤除、旧配置 / 诊断清理和对应本地回归 | 依赖 S1.1；RO-1～6 | 尚未由 B 规划 / NOT RUN |
 | S1.3 — 字段配置与策略闭环 | 完成两个作用域、默认 / 空表、类型校验、绕过、直链一致性和本地验收，同步新版本与全部适用文档 | 依赖 S1.2；RO-2～6、8、9，F-01～08 | 尚未由 B 规划 / NOT RUN |
 | S1.4 — 候选真实验证与交接 | 默认 / 定制配置执行全部 RJ、对照差异、必要修正与重跑、独立 B 审查及最终 RO 核对 | 依赖 S1.3；RO-1～9 | 尚未由 B 规划 / NOT RUN |
@@ -251,7 +252,8 @@ B 核对完整 Task 范围、真实输入和原始证据，并独立复现前述
 ## Closure Packet
 
 - Base：`6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5`；Implementation Head：NOT SET。
-- Contract Checkpoint：`eb2775e53f5c26f7c6dd46294e62249e7bb8aa63`；Task 计划与实现检查点：NOT SET。
+- Contract Checkpoint：`eb2775e53f5c26f7c6dd46294e62249e7bb8aa63`；
+  [S1.1 计划](S1.1-real-jellyfin-12.3-baseline.md)已发布，Plan Checkpoint 待 Developer 从 Git 解析；实现检查点 NOT SET。
 - RO-1～9、F-01～08、RJ-01～12 和独立 B 决定：PENDING；实际产品验证均 NOT RUN。
 - 真实 Jellyfin 构建 / 素材 / 配置 / 测试工具身份与原始证据：NOT SET。
 - B-on / B-off / C 差异白名单核对、不变量 / P2 / 限制：PENDING。
@@ -268,6 +270,8 @@ B 核对完整 Task 范围、真实输入和原始证据，并独立复现前述
   Base、原 JSON 缓存删除目标、直链及其他保留能力、12 组必需真实验证不变。
 - 2026-10-24：用户明确要求激活 Slice；合同 v3 由 PLANNED 变为 ACTIVE，建立本地激活检查点。
   范围与验收不变，B Task 计划、产品实现、真实服务验证和独立审查仍待完成。
+- 2026-10-25：按用户要求由 B 发布 S1.1 验证基线计划；仅同步状态与索引，合同范围、
+  Base 和 Contract Checkpoint 不变。工具 / 产品实现、真实基线和独立审查未开始。
 
 ## A Final Review
 
@@ -280,10 +284,10 @@ Closure Reconciliation: PENDING
 Next Action: PENDING — AFTER IMPLEMENTATION AND INDEPENDENT B REVIEW
 ```
 
-本轮仅激活合同并建立本地 Git 检查点，不修改产品行为或版本、不运行真实服务验证、不 push / 发布。
-后续由 B 依据激活检查点提交首个 Task 计划。只有满足上述门槛并获独立 A 最终 PASS
+当前已激活合同并发布首个 B Task S1.1 计划，不修改产品行为或版本、不运行真实服务验证、不 push / 发布。
+后续实施以已提交的 S1.1 计划为入口。只有满足上述门槛并获独立 A 最终 PASS
 才能关闭 Slice；未运行真实服务验证时不接受“其他功能完好保留”的完成结论。
 
 ```text
-Next Action: NONE — AUTHORIZED SLICE ACTIVATION COMPLETE
+Next Action: NONE — AUTHORIZED TASK PLANNING COMPLETE
 ```

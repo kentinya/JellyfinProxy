@@ -13,9 +13,10 @@
 - Contract Checkpoint：`eb2775e53f5c26f7c6dd46294e62249e7bb8aa63`。
 - Implementation Head：NOT SET。
 - 真实 Jellyfin 验证：NOT RUN；独立 B / A 审查：PENDING。
-- 后续由 B 根据已提交合同与实际基线规划首个 Task，建议从 S1.1 真实 12.3 验证基线开始；
-  根 [TASK](TASK.md) 暂无活动实施任务。
+- 首个 B Task [S1.1 — 真实 12.3 验证基线](Task/S1.1-real-jellyfin-12.3-baseline.md)
+  已发布为 **PLANNED**，当前入口见根 [TASK](TASK.md)；先取得 J / B-on / B-off 基线，尚未实施。
+- S1.2～S1.4 仍为建议顺序，待前序真实结果后逐步规划；本轮仅完成首个 Task 规划。
 
 ```text
-Next Action: NONE — AUTHORIZED SLICE ACTIVATION COMPLETE
+Next Action: NONE — AUTHORIZED TASK PLANNING COMPLETE
 ```
