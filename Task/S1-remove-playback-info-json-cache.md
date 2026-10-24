@@ -12,7 +12,7 @@ Status: ACTIVE
 Activated On: 2026-10-24
 Contract Revision: 3 — no field changes without explicit configuration
 Base SHA: 6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5
-Contract Checkpoint: NOT SET
+Contract Checkpoint: eb2775e53f5c26f7c6dd46294e62249e7bb8aa63
 Implementation Head: NOT SET
 Required Test Level: T4
 Target Upstream: Jellyfin Server 12.3 (official v12.3)
@@ -22,7 +22,7 @@ A Final Review: PENDING
 ```
 
 按用户本轮“激活 Slice”要求，本合同及规范性字段补充已激活；Base 保持固定。
-创建本次激活提交后，由 Git 解析真实 Contract Checkpoint 并以文档后继补记，避免自引用 SHA。
+Contract Checkpoint 已从 Git 解析，并由本次纯文档后继补记；该后继不移动 Base，不是实现候选。
 后续由 B 发布首个 Task 计划；当前未发布实施任务，也未开始产品实现或真实服务验证。
 激活前已有本会话的根 SLICE / TASK 修改、三份未跟踪方案文档及 `artifacts/`；
 本次只提交前五份合同相关文档，保留既有证据与用户文件。
@@ -251,7 +251,7 @@ B 核对完整 Task 范围、真实输入和原始证据，并独立复现前述
 ## Closure Packet
 
 - Base：`6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5`；Implementation Head：NOT SET。
-- Contract / Task 计划与实现检查点：NOT SET。
+- Contract Checkpoint：`eb2775e53f5c26f7c6dd46294e62249e7bb8aa63`；Task 计划与实现检查点：NOT SET。
 - RO-1～9、F-01～08、RJ-01～12 和独立 B 决定：PENDING；实际产品验证均 NOT RUN。
 - 真实 Jellyfin 构建 / 素材 / 配置 / 测试工具身份与原始证据：NOT SET。
 - B-on / B-off / C 差异白名单核对、不变量 / P2 / 限制：PENDING。

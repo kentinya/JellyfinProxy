@@ -6,6 +6,8 @@
 当前尚未发布 B Task 计划，下一步由 B 基于激活检查点规划首个 Task（建议 S1.1）；
 产品实施和真实服务验证均未开始。以下 BUG-001 为已完成的历史任务，不构成本次验证结果。
 
+S1 Contract Checkpoint：`eb2775e53f5c26f7c6dd46294e62249e7bb8aa63`。
+
 独立 bug [BUG-001 — MediaSourceCache 失效映射清理](Task/BUG-001-media-source-cache-invalidation.md)
 已完成独立 B 审查，状态为 **PASS**，AC-1～10 全部满足。完整计划、Developer 完成报告、
 审查范围、证据及非阻塞 P2 建议保存在该任务记录中。

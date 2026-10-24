@@ -10,7 +10,7 @@
 绕过优先、直链一致性及真实验证要求保留；对应 RO-9 和 F-01～08。
 
 - Slice Base：`6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5`。
-- Contract Checkpoint：NOT SET（创建本次激活提交后由 Git 解析并补记）。
+- Contract Checkpoint：`eb2775e53f5c26f7c6dd46294e62249e7bb8aa63`。
 - Implementation Head：NOT SET。
 - 真实 Jellyfin 验证：NOT RUN；独立 B / A 审查：PENDING。
 - 后续由 B 根据已提交合同与实际基线规划首个 Task，建议从 S1.1 真实 12.3 验证基线开始；
