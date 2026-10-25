@@ -24,7 +24,8 @@ A Final Review: PENDING
 按用户本轮“激活 Slice”要求，本合同及规范性字段补充已激活；Base 保持固定。
 Contract Checkpoint 已从 Git 解析，并由激活后的纯文档提交补记；该后继不移动 Base，不是实现候选。
 首个 B Task [S1.1 — 真实 12.3 验证基线](S1.1-real-jellyfin-12.3-baseline.md)已由 Developer 实施并
-交为 READY FOR B REVIEW；工具与 J / B-on / B-off 基线已交付，候选 C 对照与独立审查未完成。
+交付工具与 J / B-on / B-off 基线；2026-10-25 独立 B 核对后决定 FIX REQUIRED，
+修正范围 R1～R5 见该 Task 的审查记录。候选 C 对照与 A 最终审查未完成。
 激活前已有本会话的根 SLICE / TASK 修改、三份未跟踪方案文档及 `artifacts/`；
 激活时只提交前五份合同相关文档，保留既有证据与用户文件。
 
@@ -244,7 +245,7 @@ Task Base 与拆分由 B 依据已激活合同与实际结果逐步制定，不�
 
 | 建议单元 | 完整交付闭环 | 依赖 / 结果映射 | 当前状态 |
 |---|---|---|---|
-| [S1.1 — 真实 12.3 验证基线](S1.1-real-jellyfin-12.3-baseline.md) | 固定实际构建，准备隔离库 / 观测与回归工具，取得 J、B-on、B-off 基线及可重复输入，明确旧路由限制 | 首个 Task；支撑 RO-1～8 的基线，准备 RO-9 对照 | READY FOR B REVIEW；基线 82/82 PASS（J / B-on / B-off）；C 对照 NOT RUN；B 审查 PENDING |
+| [S1.1 — 真实 12.3 验证基线](S1.1-real-jellyfin-12.3-baseline.md) | 固定实际构建，准备隔离库 / 观测与回归工具，取得 J、B-on、B-off 基线及可重复输入，明确旧路由限制 | 首个 Task；支撑 RO-1～8 的基线，准备 RO-9 对照 | FIX REQUIRED；工具输出 82/82 PASS 未满足全部 AC；B 已发布 R1～R5；C 对照 NOT RUN |
 | S1.2 — 缓存撤除与保留能力回归 | 原子完成 JSON 缓存撤除、旧配置 / 诊断清理和对应本地回归 | 依赖 S1.1；RO-1～6 | 尚未由 B 规划 / NOT RUN |
 | S1.3 — 字段配置与策略闭环 | 完成两个作用域、默认 / 空表、类型校验、绕过、直链一致性和本地验收，同步新版本与全部适用文档 | 依赖 S1.2；RO-2～6、8、9，F-01～08 | 尚未由 B 规划 / NOT RUN |
 | S1.4 — 候选真实验证与交接 | 默认 / 定制配置执行全部 RJ、对照差异、必要修正与重跑、独立 B 审查及最终 RO 核对 | 依赖 S1.3；RO-1～9 | 尚未由 B 规划 / NOT RUN |
@@ -254,10 +255,11 @@ Task Base 与拆分由 B 依据已激活合同与实际结果逐步制定，不�
 - Base：`6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5`；Implementation Head：NOT SET。
 - Contract Checkpoint：`eb2775e53f5c26f7c6dd46294e62249e7bb8aa63`；
   [S1.1 计划](S1.1-real-jellyfin-12.3-baseline.md)的 Plan Checkpoint 为 `eac3245`；
-  S1.1 实现检查点（工具与基线）为 `f0944486f3e721a6ab10fe75751573f1ba09ae86`，产品未变。
-- RO-1～9、F-01～08、RJ-01～12 和独立 B 决定：PENDING；实际产品验证均 NOT RUN。
+  S1.1 实现候选（工具与基线）为 `cfc790e22dc56c2016e09fd49b8e4189ce00a027`，产品未变，B 决定 FIX REQUIRED。
+- RO-1～9 均未完成；F-01～08 / 候选 C 的 RJ-01～12 为 NOT RUN，S1.1 的 B 返修不构成 Slice PASS。
 - 真实 Jellyfin 构建 / 素材 / 配置 / 测试工具身份与原始证据：见 S1.1 报告
-  （`artifacts/validation-evidence/S1/s1-1-baseline-20261025-03/`），C 对照仍 NOT RUN。
+  （`artifacts/validation-evidence/S1/s1-1-baseline-20261025-05/`）；B 审查证据为
+  `artifacts/validation-evidence/S1/s1-1-b-review-20261025-01/`，C 对照仍 NOT RUN。
 - B-on / B-off / C 差异白名单核对、不变量 / P2 / 限制：PENDING。
 - README / AGENTS / CHANGELOG / 版本与根状态协调：PENDING。
 - 官方版本与接口说明查询：已完成，只作为规划依据，不是运行验证。
@@ -274,6 +276,8 @@ Task Base 与拆分由 B 依据已激活合同与实际结果逐步制定，不�
   范围与验收不变，B Task 计划、产品实现、真实服务验证和独立审查仍待完成。
 - 2026-10-25：按用户要求由 B 发布 S1.1 验证基线计划；仅同步状态与索引，合同范围、
   Base 和 Contract Checkpoint 不变。工具 / 产品实现、真实基线和独立审查未开始。
+- 2026-10-25：S1.1 工具和基线交付后独立 B 审查为 FIX REQUIRED；174 项回归通过，
+  文档锁定构建复现失败及既定真实验收缺口记录于 S1.1；RO-1～9 重评均未完成，合同不变。
 
 ## A Final Review
 
@@ -286,10 +290,10 @@ Closure Reconciliation: PENDING
 Next Action: PENDING — AFTER IMPLEMENTATION AND INDEPENDENT B REVIEW
 ```
 
-当前已激活合同并发布首个 B Task S1.1 计划，不修改产品行为或版本、不运行真实服务验证、不 push / 发布。
-后续实施以已提交的 S1.1 计划为入口。只有满足上述门槛并获独立 A 最终 PASS
+当前 S1.1 的工具与真实改前基线已交付，但独立 B 决定 FIX REQUIRED；未修改产品行为或版本，
+未 push / 发布。后续在原 S1.1 内修正并复核。只有满足上述门槛并获独立 A 最终 PASS
 才能关闭 Slice；未运行真实服务验证时不接受“其他功能完好保留”的完成结论。
 
 ```text
-Next Action: NONE — AUTHORIZED TASK PLANNING COMPLETE
+Next Action: Developer fixes S1.1 R1–R5; B re-review required
 ```
