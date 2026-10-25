@@ -115,4 +115,6 @@ F-08 的值用于证明用户配置优先级，不把改变声明的支持能力
 F-08 已由 S1.4 在候选 C 上用真实 12.3 取得：未配置 / 空表字段与同次上游一致，显式旧两项
 恢复原效果，单字段定制只改所列字段，配置 Id / Path 同时驱动返回字段与 302，并完成原文绕过与
 Video 闭环；证据见 `artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/`。
-该结果尚待独立 B 复核。Slice 仍 ACTIVE，A Final Review PENDING；本状态协调不改变任何字段合同。
+上述为 Developer 交付陈述。S1.4 独立 B 已核实字段 / 绕过 / 302 部分，但三套配置的远程停止
+只读到 302 / 0 字节，F-08 完整媒体闭环仍需 RR-2 补证，Task 为 FIX REQUIRED。
+Slice 仍 ACTIVE，A Final Review PENDING；本状态协调不改变任何字段合同。

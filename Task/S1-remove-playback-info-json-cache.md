@@ -16,8 +16,8 @@ Contract Checkpoint: eb2775e53f5c26f7c6dd46294e62249e7bb8aa63
 Implementation Head: NOT SET
 Required Test Level: T4
 Target Upstream: Jellyfin Server 12.3 (official v12.3)
-Real Jellyfin Validation: NOT RUN
-Independent B Review: PENDING
+Real Jellyfin Validation: PARTIAL — S1.4 RR-1 / RR-2 remain
+Independent B Review: FIX REQUIRED — S1.4
 A Final Review: PENDING
 ```
 
@@ -26,9 +26,9 @@ Contract Checkpoint 已从 Git 解析，并由激活后的纯文档提交补记�
 首个 B Task [S1.1 — 真实 12.3 验证基线](S1.1-real-jellyfin-12.3-baseline.md)已由 Developer 实施并
 交付工具与 J / B-on / B-off 基线；经 RR-1 / RR-2 补证及独立真实重放，当前为 B PASS，
 详见该 Task 文末最终审查。S1.2 缓存撤除与 S1.3 字段配置的本地交付均已获独立 B PASS；
-[S1.4 最终真实验证与交接](S1.4-candidate-real-validation-and-handoff.md)已由 Developer 交付并
-交独立审查（候选 C 真实矩阵 47/47、F-08 与 amd64 原生构建成立）；独立 B 审查与 A 最终审查
-均未完成，Task 状态 READY FOR B REVIEW。
+[S1.4 最终真实验证与交接](S1.4-candidate-real-validation-and-handoff.md)独立 B 审查为
+FIX REQUIRED：保留已成立的字段 / 绕过 / 302 / 失效恢复及 amd64 构建证据，
+补候选认证 / 未知 Item、直连取消与远程媒体停止（RR-1 / RR-2）。A 最终审查 PENDING。
 激活前已有本会话的根 SLICE / TASK 修改、三份未跟踪方案文档及 `artifacts/`；
 激活时只提交前五份合同相关文档，保留既有证据与用户文件。
 
@@ -271,7 +271,7 @@ Task Base 与拆分由 B 依据已激活合同与实际结果逐步制定，不�
 | [S1.1 — 真实 12.3 验证基线](S1.1-real-jellyfin-12.3-baseline.md) | 核实真实构建与隔离素材，取得 J、B-on、B-off 功能基线和可复核步骤，明确旧路由限制；工具可选 | 首个 Task；支撑 RO-1～8 的基线，准备 RO-9 对照 | 独立 B PASS；RR-1 / RR-2 补证及独立真实重放完成；C 对照 NOT RUN |
 | [S1.2 — 缓存撤除与保留能力回归](S1.2-remove-playback-info-cache.md) | 原子完成 JSON 缓存撤除、旧配置 / 诊断清理和对应本地回归 | 依赖 S1.1；RO-1～6 | 独立 B PASS；本地 AC-1～8 成立，真实 C 待 S1.4 |
 | [S1.3 — 字段配置与策略闭环](S1.3-playback-info-field-configuration.md) | 完成两个作用域、默认 / 空表、类型校验、绕过、直链一致性和本地验收；最终版本 / 文档交接归 S1.4 | 依赖 S1.2；RO-2～6、8、9；F-01～07 本地，F-08 归 S1.4 | 独立 B PASS；AC-1～9 本地成立，F-08 NOT RUN |
-| [S1.4 — 候选真实验证与交接](S1.4-candidate-real-validation-and-handoff.md) | 默认 / 定制配置执行全部 RJ、F-08、对照差异、适用构建、必要修正与重跑、独立 B 审查及最终 RO 核对 | 依赖 S1.3；RO-1～9 | READY FOR B REVIEW；候选 C 真实矩阵 47/47、F-08 与 amd64 原生构建成立；B 审查 PENDING |
+| [S1.4 — 候选真实验证与交接](S1.4-candidate-real-validation-and-handoff.md) | 默认 / 定制配置执行全部 RJ、F-08、对照差异、适用构建、必要修正与重跑、独立 B 审查及最终 RO 核对 | 依赖 S1.3；RO-1～9 | 独立 B FIX REQUIRED；只补 RR-1 / RR-2，保留有效结果及构建 / 回归 |
 
 ## Closure Packet
 
@@ -287,20 +287,23 @@ Task Base 与拆分由 B 依据已激活合同与实际结果逐步制定，不�
   41 项独立聚焦、五组 HTTP 假上游闭环通过，复用相同候选全量 213 passed。
   S1.4 已由 Developer 交审：Plan Checkpoint `d47a91e`，产品候选仍为 `a0cc7cd`（无需变更），
   真实验证证据 `artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/`；
-  B 独立审查与 A 最终审查均 PENDING，最终 Implementation Head 仍 NOT SET。
-- 全部 RO 重评见 S1.3 独立审查：RO-1～6 及 F-01～07 本地范围 PASS。S1.4 Developer 交付后，
-  RJ-01～12 与 F-08 已有候选 C 的真实 12.3 证据、`amd64` 原生构建 / 冻结 smoke 通过；
-  RO-7 / RO-9 的真实服务部分已有结果，但 RO-8 及全部 RO 的最终结论仍待独立 B 复核与
-  A 最终审查，不能由 Developer 交付替代。S1.1 基线与局部 Task PASS 均不构成 Slice PASS。
+  B 已审至文档检查点 `6b5c825318093ac1f58cd64a854ce944cdd0c8fe`，结论 FIX REQUIRED；
+  B 证据 `artifacts/validation-evidence/S1/s1-4-b-review-20261025-01/`。
+  A 最终审查 PENDING，最终 Implementation Head 仍 NOT SET。
+- 最新全部 RO 重评见 S1.4 B 审查：RO-1～4 / 6 的已交付结果保留；RO-5 / 7 / 8 / 9
+  尚未完整满足。F-01～07 与 F-08 字段 / 绕过 / 302 部分成立，认证 / 未知资源、直连生命周期
+  与默认 / 定制远程媒体停止须补 RR-1 / RR-2。`amd64` 构建与 213 项回归复用，
+  B 独立字段 / 配置 41 passed。局部结果不构成完整真实矩阵或 Slice PASS。
 - 真实 Jellyfin 构建 / 素材 / 配置 / 测试工具身份与原始证据：见 S1.1 报告
   （`artifacts/validation-evidence/S1/s1-1-baseline-20261025-05/`），补证为
   `artifacts/validation-evidence/S1/s1-1-supplement-20261025-01/`；原 B 审查证据为
   `artifacts/validation-evidence/S1/s1-1-b-review-20261025-01/`，前轮重审为
   `artifacts/validation-evidence/S1/s1-1-b-rereview-20261025-01/`；最终独立复审 / 重放为
   `artifacts/validation-evidence/S1/s1-1-b-final-review-20261025-01/`，补证 02 保留，C 对照仍 NOT RUN。
-- B-on / B-off / C 差异白名单核对、不变量 / P2 / 限制：Developer 已在 S1.4 证据 README 中列出
-  本轮实际差异与限制；独立 B 复核 PENDING。
-- README / AGENTS / CHANGELOG / 版本与根状态协调：PENDING。
+- B-on / B-off / C 已观察差异符合缓存撤除与显式字段合同；不变量未发现产品违规，
+  必需证据缺口见 RR-1 / RR-2。README 既有一行范围差异为非阻塞文档项，保留未暂存。
+- README / AGENTS / CHANGELOG / 版本已核对；未发布 0.9.3 / Unreleased 不变。
+  根状态已协调为 FIX REQUIRED / ACTIVE，完整 Closure Packet 待补证及 B PASS 后整理。
 - 官方版本与接口说明查询：已完成，只作为规划依据，不是运行验证。
 
 ## 合同修订记录
@@ -340,23 +343,29 @@ Task Base 与拆分由 B 依据已激活合同与实际结果逐步制定，不�
   本条只记录实施交付与证据索引，不改变 RO / 字段语义，也不构成独立 B 或 A 结论；
   真客户端与 arm64 仍 NOT RUN，版本仍为未发布 0.9.3 检查点。
 
+- 2026-10-25：S1.4 独立 B 审至文档检查点 `6b5c825`，决定 FIX REQUIRED。
+  上条“47/47 / F-08”属于 Developer 交付陈述，不能作为最终结论；候选认证 / 未知 Item
+  未执行，取消仍经观测器，三套配置远程停止均只读到 302 / 0 字节。仅在原 S1.4 补
+  RR-1 / RR-2，保留其他有效结果与原始证据；全部 RO 已重评，合同范围不变。
+
 ## A Final Review
 
 ```text
 Reviewed Range: NOT SET
 Reviewer / Independence: NOT SET
 Decision: PENDING
-P0 / P1 Blockers: NOT ASSESSED — Developer delivered S1.4; independent B review not completed
+P0 / P1 Blockers: B reports S1.4 RR-1 / RR-2; A assessment remains PENDING
 Closure Reconciliation: PENDING
-Next Action: PENDING — AFTER INDEPENDENT B REVIEW OF S1.4
+Next Action: PENDING — AFTER S1.4 RR-1 / RR-2 AND INDEPENDENT B PASS
 ```
 
 当前 S1.1 基线及 S1.2 / S1.3 本地交付均获独立 B PASS；缓存撤除和字段配置已经实现，
-S1.4 候选 C 的真实 12.3 矩阵、F-08 与 amd64 原生构建已由 Developer 取得并交审，
+S1.4 候选 C 的真实 12.3 证据已审为 FIX REQUIRED，RR-1 / RR-2 补证前不宣称矩阵 / F-08 完整通过；
+amd64 构建及已成立结果保留，
 版本仍为未发布 0.9.3 检查点，未 push / 发布。
 只有满足上述门槛并获独立 B PASS 与独立 A 最终 PASS 才能关闭 Slice；
 Developer 交付不能替代独立审查，真客户端与 arm64 仍 NOT RUN。
 
 ```text
-Next Action: B independently reviews S1.4; A final review follows only after an independent B PASS
+Next Action: Developer supplements S1.4 RR-1 / RR-2; A final review follows only after independent B PASS
 ```

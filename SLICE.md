@@ -21,17 +21,19 @@
   及 e903fa9 文档后继。AC-1～9 本地成立；B 独立 41 项、五组 HTTP 假上游闭环通过，
   复用相同候选的 213 项全套。证据：`artifacts/validation-evidence/S1/s1-3-b-review-20261025-01/`。
   这不是真实 Jellyfin 或 Slice PASS。
-- [S1.4](Task/S1.4-candidate-real-validation-and-handoff.md)：**READY FOR B REVIEW**，Task Base 与
+- [S1.4](Task/S1.4-candidate-real-validation-and-handoff.md)：独立 B **FIX REQUIRED**，Task Base 与
   Implementation Head 均为 `a0cc7cddff32da585923c5ff11d3977ea910d87a`（产品无需变更，未为造提交
-  修改产品），Plan Checkpoint `d47a91e`。候选 C 在新建隔离官方 12.3 实例上完成 8 套配置、
-  47 项真实功能检查全部 PASS，F-08 成立；`amd64` 原生构建与冻结二进制 smoke PASS，完整
-  pytest 213 passed。证据：`artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/`。
-  B 独立审查 **PENDING**；真客户端与 `arm64` NOT RUN。
-- RO 状态：RO-1～6 及 F-01～07 本地范围 PASS；本轮补足 RJ-01～12 与 F-08 的真实候选证据，
-  RO-7 / RO-9 的真实服务部分已有 C 结果，RO-8 的最终交接仍待独立 B 审查与 A 最终审查确认。
-  最终产品 Implementation Head 与 A Final Review 保持 **PENDING**，Slice 仍 ACTIVE。
+  修改产品），Plan Checkpoint `d47a91e`。候选 C 在新建隔离官方 12.3 实例上运行 8 套配置；
+  Developer 自报 47 条 PASS，B 发现候选认证 / 未知 Item 未执行、取消路径仍经观测器、
+  三套配置远程停止只有 302 / 0 字节；RR-1 / RR-2 在原 Task 补证。有效字段 / 绕过 / 302 /
+  失效恢复结果保留，`amd64` 构建 / frozen smoke 与完整 213 passed 复用；B 独立 41 passed。
+  原证据：`artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/`；
+  B 证据：`artifacts/validation-evidence/S1/s1-4-b-review-20261025-01/`。
+- RO 全量重评见 S1.4 B 记录：RO-1～4 / 6 的已交付结果保留；RO-5 / 7 / 8 / 9 尚未完整满足。
+  F-01～07 及 F-08 字段部分成立，真实完整播放闭环仍需补证。
+  最终产品 Implementation Head 为 **NOT SET**，A Final Review **PENDING**，Slice 仍 ACTIVE。
   当前版本仍为未发布 0.9.3 检查点，变化记录在 Unreleased；不自动编号或发布。
 
 ```text
-Next Action: B independently reviews S1.4; A final review follows only after an independent B PASS
+Next Action: Developer supplements S1.4 RR-1 / RR-2; independent B review must pass before A final review
 ```
