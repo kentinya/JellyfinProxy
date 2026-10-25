@@ -12,6 +12,8 @@ Developer 在两条路径中均负责实施、验证和交接。
 
 规划模板：[Task](Task/TEMPLATE.md)、[Slice](Task/SLICE_TEMPLATE.md)。
 流程来源与固定参考版本见[来源说明](docs/references.md)。
+真实 Jellyfin 12.3 基线的准备、执行与证据说明见
+[验证工具文档](docs/validation/jellyfin-12.3-baseline.md)。
 
 ## 源码运行
 
