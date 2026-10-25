@@ -3,8 +3,16 @@
 本文说明 Slice S1 真实服务验证工具的**准备、执行、重跑与停止**。工具是测试基础设施，
 不参与代理业务；产品代码不会导入 `scripts/validation/`。
 
+按 [S1 合同 v4](../../Task/S1-remove-playback-info-json-cache.md) 和
+[当前 Task](../../Task/S1.1-real-jellyfin-12.3-baseline.md)，本文工具链是**可选方式**，
+不是实机功能验收前置。人工或短小 HTTP 客户端取得的有效真实证据同样可用；不必先修工具。
+现有 `--server-lock` 新实例重建会因 server ID 不同失败；观测器积累全部媒体字节且会合成
+连接失败响应，因此不能用它证明产品提前取消释放或直连 Jellyfin 不可达。
+部分 PASS 判据不足，须核对原始证据；05 的校验结果实际为 20 PASS + 1 WARN，
+不是 21 项全 PASS。下文保留现有工具用法，不代表这些限制已修复。
+
 - 合同要求固定 **Jellyfin Server 12.3**；其他版本、`latest` 或网页版本号一律拒绝。
-- 对照组：`J`（直连 12.3，经透明观测入口）、`B-on`（固定 Slice Base，原默认缓存开启）、
+- 工具记录组：`J`（当前工具实际经观测入口，不能当作独立直连证据）、`B-on`（固定 Slice Base，原默认缓存开启）、
   `B-off`（同一 Base，仅关闭 JSON 缓存）。三者使用同一服务器、同一素材、同一客户端策略。
 - 当前证据：[`artifacts/validation-evidence/S1/s1-1-baseline-20261025-05`](../../artifacts/validation-evidence/S1/s1-1-baseline-20261025-05)。
 
@@ -46,7 +54,7 @@ RUN_DIR=artifacts/validation-evidence/S1/s1-1-baseline-$(date +%Y%m%d-%H%M)
 
 - `--cases RJ-02,RJ-05`：只跑指定场景（自动准备前置），不得把选择结果当成全量 PASS。
 - `--groups J,B-off`：只跑指定对照组。
-- `--server-lock <path>`：按既有锁重建（B 复现用），仍校验 digest / 版本 / 产品 Base。
+- `--server-lock <path>`：原计划按既有锁重建；目前有上述新实例限制，不是 B 复现强制入口。
 - `--skip-pull`：镜像已在本地时跳过拉取。
 - `stop --remove-files`：额外删除 run 目录（默认保留以便复核）。
 

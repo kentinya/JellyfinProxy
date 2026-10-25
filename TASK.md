@@ -1,8 +1,8 @@
 # Task S1.1 — 真实 Jellyfin 12.3 验证基线
 
 当前 B 计划、实施与交接报告见 [S1.1 完整计划](Task/S1.1-real-jellyfin-12.3-baseline.md)，
-Parent Slice 为已激活的 [S1 合同 v3](Task/S1-remove-playback-info-json-cache.md)。
-本 Task 交付隔离真实 12.3、可播放素材与验证工具，并取得 J / B-on / B-off 改前基线；
+Parent Slice 为已激活的 [S1 合同 v4](Task/S1-remove-playback-info-json-cache.md)。
+本 Task 取得隔离真实 12.3 下 J / B-on / B-off 的功能基线；验证工具为可选手段，
 缓存撤除、字段配置和候选最终验证仍由后续 Task 交付。
 
 ```text
@@ -17,16 +17,18 @@ Implementation Head: cfc790e22dc56c2016e09fd49b8e4189ce00a027
 Difficulty: High
 Test Level: T4
 Planner / Reviewer: B
-Independent Review: FIX REQUIRED — B review 2026-10-25
+Independent Review: FIX REQUIRED — functional evidence gaps V1–V4
 ```
 
-Developer 已交付工具、夹具、文档与三组真实基线，工具输出 82/82 子项 PASS；独立 B 核对
-完整 Base..Head、原始事务及现有 CLI 后决定 **FIX REQUIRED**。锁定构建的新目录重建失败，
-第二 ID 保留、提前取消 / 上游释放、绕过 / ID / raw 矩阵和产品不可达验证存在必需缺口。
-修正范围 R1～R5、逐项 AC 与 RO 重评见完整 Task 的 B Review Result。
+Developer 已交付工具、夹具、文档与三组真实基线；工具自报 82/82 不替代独立核对。
+按用户要求已撤销工具建设 / 修复、锁重建和机器报告作为必需门槛，可人工或用短小客户端验证。
+当前 **FIX REQUIRED** 仅因第二已种入 ID 保留、提前取消 / 上游释放、绕过 / ID / raw 边界、
+产品直连不可达 / 恢复仍缺证据，不表示已证实产品缺陷。V1～V4、当前 AC / RO 重评与历史
+审查纠正见完整 Task 的“当前 B 重规划与审查纠正”。已有有效证据继续复用。
 
 B 全回归：174 passed；`doctor` PASS；文档 `prepare --server-lock` 退出 2，后续独立真实矩阵
-BLOCKED，专属资源已清理。证据：`artifacts/validation-evidence/S1/s1-1-b-review-20261025-01/`。
+当时 BLOCKED，专属资源已清理；当前不要求先修该入口。
+证据：`artifacts/validation-evidence/S1/s1-1-b-review-20261025-01/`。
 S1 保持 ACTIVE，产品未变；C 对照、RO-1～9 最终验收与 A 最终审查未完成，不启动 S1.2。
 
 历史 [BUG-001 — MediaSourceCache 失效映射清理](Task/BUG-001-media-source-cache-invalidation.md)
@@ -34,5 +36,5 @@ S1 保持 ACTIVE，产品未变；C 对照、RO-1～9 最终验收与 A 最终�
 既有未跟踪 `artifacts/` 保持原样，不纳入本次实现提交。
 
 ```text
-Next Action: Developer fixes S1.1 R1–R5; B re-review required
+Next Action: Developer supplements S1.1 V1–V4 functional evidence; B re-review required
 ```
