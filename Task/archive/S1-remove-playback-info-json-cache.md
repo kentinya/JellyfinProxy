@@ -1,6 +1,9 @@
 # Slice S1 — 删除完整 JSON 缓存、按配置修改播放字段并验证既有能力
 
-遵循[开发流程](../docs/development-workflow.md)和 [Slice 模板](SLICE_TEMPLATE.md)。
+> 历史归档；原路径：`Task/S1-remove-playback-info-json-cache.md`。本文保留当时的计划、审查和验证限制，
+> 不作为当前实施指令。归档说明见[历史索引](README.md)，当前行为见[配置与播放行为](../../docs/configuration.md)。
+
+遵循[开发流程](../../docs/development-workflow.md)和 [Slice 模板](../SLICE_TEMPLATE.md)。
 本轮用户明确要求按 Slice 规划，并增加真实 Jellyfin 12.3 验证；该要求优先于默认工作分类。
 首轮目标为主动撤除功能；用户后续增加按配置修改播放字段，本合同同步纳入该新增能力，
 保留原删除目标与真实服务验收，不改写历史 bug 范围。
@@ -43,9 +46,9 @@ Jellyfin 获取对应结果；其他现有代理、媒体策略、客户端绕�
 必须在真实 Jellyfin Server 12.3 上验证，不以单元或假上游结果代替。
 
 字段配置、默认 / 空表语义、类型、执行顺序和 F-01～F-08 详见
-[按字段配置修改合同补充](drafts/playback-info-field-overrides.md)，该补充是本合同规范性组成部分。
+[按字段配置修改合同补充](S1-playback-info-field-overrides.md)，该补充是本合同规范性组成部分。
 
-前期实现调查见[设计 v1](drafts/remove-playback-info-json-cache.md)。该文档保留为历史输入；
+前期实现调查见[设计 v1](README.md#已移除的过时草案)。该文档保留为历史输入；
 其中“不使用 Slice”“真实服务非验收项”“单 Task”的建议已由本合同替代。
 
 ## 当前基线与架构边界
@@ -259,7 +262,7 @@ B 核对完整 Task 范围、真实输入和原始证据，并独立复现前述
 ### 证据与适用边界
 
 最终报告明确性能观测、真实客户端和打包的覆盖范围，不夸大为全设备兼容认证。若改动二进制 /
-部署包配置，按[发布说明](../docs/releasing.md)追加适用构建验证。未知的环境问题和既有上游
+部署包配置，按[发布说明](../../docs/releasing.md)追加适用构建验证。未知的环境问题和既有上游
 限制保留在对照表；新增回归必须修复，不以“上游差异”为由豁免。
 
 ## Task 索引
@@ -304,9 +307,9 @@ A 在此工作区可直接访问，保留至 A 最终决定。私有凭据、Jel
 | JBO | `s1-1-baseline-20261025-05/`、`s1-1-supplement-20261025-01/`、`s1-1-b-final-review-20261025-01/`；原 01 / 02 补证及历轮失败保留；改前 J / B-on / B-off |
 | L2 | `s1-2-impl-20261025-01/`；本地缓存撤除、错误 / 资源关闭 / LRU 等确定性回归 |
 | L3 | `s1-3-b-review-20261025-01/`；字段 / 配置 41 passed、五组 HTTP 假上游；相同候选全套 213 passed |
-| C0 | [s1-4-candidate-20261025-01](../artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/README.md)；新基线 82/82、八套 C 配置、原始上游账本、字段 / 映射 / 失败恢复、本地播放、日志、构建 / frozen smoke、全套日志；初版标签缺口由 D1 / B1 补足 |
-| D1 | [s1-4-supplement-20261025-01](../artifacts/validation-evidence/S1/s1-4-supplement-20261025-01/README.md)；RR-1 / RR-2 7 项 PASS，三次工具 / 断言失败保留；其长度头文字说明以 B 最终更正和原始 JSON 为准 |
-| B1 | [s1-4-b-final-review-20261025-01](../artifacts/validation-evidence/S1/s1-4-b-final-review-20261025-01/README.md)；新官方 12.3.0 实例、7 项补证 + 21 项关键路径、原始值独立断言、输入对比 / 计时 / 脱敏审计；前轮 `s1-4-b-review-20261025-01/` 保留 |
+| C0 | [s1-4-candidate-20261025-01](../../artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/README.md)；新基线 82/82、八套 C 配置、原始上游账本、字段 / 映射 / 失败恢复、本地播放、日志、构建 / frozen smoke、全套日志；初版标签缺口由 D1 / B1 补足 |
+| D1 | [s1-4-supplement-20261025-01](../../artifacts/validation-evidence/S1/s1-4-supplement-20261025-01/README.md)；RR-1 / RR-2 7 项 PASS，三次工具 / 断言失败保留；其长度头文字说明以 B 最终更正和原始 JSON 为准 |
+| B1 | [s1-4-b-final-review-20261025-01](../../artifacts/validation-evidence/S1/s1-4-b-final-review-20261025-01/README.md)；新官方 12.3.0 实例、7 项补证 + 21 项关键路径、原始值独立断言、输入对比 / 计时 / 脱敏审计；前轮 `s1-4-b-review-20261025-01/` 保留 |
 
 C0 / D1 / B1 官方镜像摘要相同：
 `sha256:2038fe038ab3876a80f6e7b7e0aef6607b032c7dc0c9b3ad3296d0b2eba3bbb5`。
@@ -461,7 +464,7 @@ Next Action: NONE — AUTHORIZED WORK COMPLETE
 
 ### 验证、证据与历史更正
 
-本轮证据：[A review README](../artifacts/validation-evidence/S1/s1-a-final-review-20261025-01/README.md)，
+本轮证据：[A review README](../../artifacts/validation-evidence/S1/s1-a-final-review-20261025-01/README.md)，
 含输入清单 / 摘要、完整范围补丁、pytest 原始日志、原始记录审计及文档检查；仅本工作区可访问，
 不声称远端上传。此前证据只读保留，未纳入 Git。
 

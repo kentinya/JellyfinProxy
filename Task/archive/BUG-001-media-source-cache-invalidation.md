@@ -1,8 +1,11 @@
 # Task BUG-001 — MediaSourceCache 失效映射清理
 
-遵循 [开发流程](../docs/development-workflow.md) 和 [B 角色指南](../docs/agent-experience/task-planner-reviewer.md)。
-用户本次明确要求将 [原草案](drafts/media-source-cache-invalidation.md) 登记为正式 Task，
-替代先前仅规划、不纳入治理的限制。当前实施入口为 [根 TASK.md](../TASK.md)。
+> 历史归档；原路径：`Task/BUG-001-media-source-cache-invalidation.md`。本文保留当时的计划、审查和验证限制，
+> 不作为当前实施指令。归档说明见[历史索引](README.md)，当前行为见[配置与播放行为](../../docs/configuration.md)。
+
+遵循 [开发流程](../../docs/development-workflow.md) 和 [B 角色指南](../../docs/agent-experience/task-planner-reviewer.md)。
+用户本次明确要求将 [原草案](README.md#已移除的过时草案) 登记为正式 Task，
+替代先前仅规划、不纳入治理的限制。当前实施入口为 [根 TASK.md](../../TASK.md)。
 
 ```text
 Task ID: BUG-001
@@ -37,14 +40,14 @@ Implementation Head: 0228dfdb43d4ab464839f38d63a59696d0d7d8ef
 
 已核对的真实实现：
 
-- [MediaSourceCache](../services/media_source_cache.py)：`remember()` 遇到非字符串或
+- [MediaSourceCache](../../services/media_source_cache.py)：`remember()` 遇到非字符串或
   非 HTTP(S) Path 直接返回，旧 URL 仍可被 `get()` 命中；畸形 IPv6 URL 可导致解析异常。
-- [PlaybackService](../services/playback_service.py)：`modify()` 记录策略处理后的 Path；
+- [PlaybackService](../../services/playback_service.py)：`modify()` 记录策略处理后的 Path；
   `remember_media_sources()` 在绕过修改时记录原始 Path，两者最终调用同一缓存方法。
-- [PlaybackHandler](../handlers/playback_handler.py)：HIT / MISS / 禁用 JSON 缓存均有
+- [PlaybackHandler](../../handlers/playback_handler.py)：HIT / MISS / 禁用 JSON 缓存均有
   记录媒体源的既有路径；绕过修改时响应正文保持原始字节。
-- [VideoHandler](../handlers/video_handler.py)：缓存命中返回 302，未命中直接调用现有代理。
-- [核心测试](../tests/test_core.py)：已有本地路径不入缓存、UUID 归一化、302、绕过建映射
+- [VideoHandler](../../handlers/video_handler.py)：缓存命中返回 302，未命中直接调用现有代理。
+- [核心测试](../../tests/test_core.py)：已有本地路径不入缓存、UUID 归一化、302、绕过建映射
   等用例，缺少“先建有效映射，再写入无效 Path”的缺陷回归。
 
 触发步骤：先对 `abc123` 记入 `https://media.example/old.mkv`，再对该 ID 处理本地路径、

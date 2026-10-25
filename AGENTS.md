@@ -30,8 +30,9 @@
 - 代理只使用 Jellyfin 返回的媒体信息，不主动打开 STRM 文件、运行 ffprobe 或操作
   Jellyfin 数据库。改变这些边界须有用户需求和明确的范围变更记录。
 - 保持流式代理、Range 等媒体响应语义及上游资源释放；避免将完整视频缓冲进内存。
-- 分清全局绕过、PlaybackInfo 绕过、Video 绕过和 PlaybackInfo 缓存绕过的职责，
-  保留已约定的优先级。缓存命中、未命中和绕过路径的改变须说明对播放与回退的影响。
+- 分清全局绕过、PlaybackInfo 修改绕过和 Video 重定向绕过的职责，保留全局优先级。
+  完整 PlaybackInfo JSON 缓存及其绕过配置已撤除；媒体源直链映射仍保留。
+  映射命中、失效、未命中和绕过路径的改变须说明对播放与回退的影响。
 - `routers/` 负责路由识别，`handlers/` 负责 HTTP 适配，`policies/` 负责客户端策略，
   `services/` 负责媒体与缓存逻辑，`infrastructure/` 负责上游 HTTP 和日志等基础设施。
   优先沿用现有结构，避免将业务判断放入基础设施。

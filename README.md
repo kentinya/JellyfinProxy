@@ -149,9 +149,10 @@ SupportsTranscoding = false
 | --- | --- |
 | [配置与播放行为](docs/configuration.md) | 全部配置、客户端策略、字段覆盖、日志、直链规则与常见问题 |
 | [构建与发布](docs/releasing.md) | Linux 双架构打包、校验和 GitHub Release 流程 |
-| [真实 Jellyfin 验证](docs/validation/jellyfin-12.3-baseline.md) | 验证环境、执行方法与证据范围 |
+| [S1 历史验证与工具](docs/validation/jellyfin-12.3-baseline.md) | 固定 12.3 基线的执行方法、证据范围与工具限制 |
 | [开发约束](AGENTS.md) · [开发流程](docs/development-workflow.md) | 参与开发时的角色、实施和审查要求 |
-| [当前 Task](TASK.md) · [当前 Slice](SLICE.md) | 当前工作状态与历史交付入口 |
+| [当前 Task](TASK.md) · [当前 Slice](SLICE.md) | 当前工作状态 |
+| [历史任务与合同](Task/archive/README.md) | 已完成任务、审查记录与合同补充 |
 
 核心代码按职责组织：`routers/` 识别路由，`handlers/` 适配 HTTP，`policies/` 决定客户端策略，
 `services/` 处理媒体信息与地址映射，`infrastructure/` 提供上游 HTTP 与日志设施。

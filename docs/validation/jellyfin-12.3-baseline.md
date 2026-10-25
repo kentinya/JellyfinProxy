@@ -1,10 +1,16 @@
-# 真实 Jellyfin 12.3 基线与验证工具
+# S1 历史验证：Jellyfin 12.3 基线与工具
 
-本文说明 Slice S1 真实服务验证工具的**准备、执行、重跑与停止**。工具是测试基础设施，
-不参与代理业务；产品代码不会导入 `scripts/validation/`。
+本文保留已关闭 Slice S1 的真实服务验证方法，便于复查历史证据。工具默认导出固定
+Slice Base `6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5`（0.9.3），运行 J / B-on / B-off
+改前对照组，不能用它的默认结果宣称当前 1.0 版本已完成验证。新验证的范围以对应任务为准。
+工具是测试基础设施，不参与代理业务；产品代码不会导入 `scripts/validation/`。
 
-按 [S1 合同 v4](../../Task/S1-remove-playback-info-json-cache.md) 和
-[当前 Task](../../Task/S1.1-real-jellyfin-12.3-baseline.md)，本文工具链是**可选方式**，
+S1 已于 2026-10-25 获[独立 A 最终 PASS / CLOSED](../../Task/archive/S1-remove-playback-info-json-cache.md#a-final-review)。
+完整历史入口见[任务与合同索引](../../Task/archive/README.md)。下文证据在本工作区可访问，
+未纳入 Git，仅克隆仓库不会取得这些文件。
+
+按 [S1 合同 v4](../../Task/archive/S1-remove-playback-info-json-cache.md) 和
+[历史 Task S1.1](../../Task/archive/S1.1-real-jellyfin-12.3-baseline.md)，本文工具链是**可选方式**，
 不是实机功能验收前置。人工或短小 HTTP 客户端取得的有效真实证据同样可用；不必先修工具。
 现有 `--server-lock` 新实例重建会因 server ID 不同失败；观测器积累全部媒体字节且会合成
 连接失败响应，因此不能用它证明产品提前取消释放或直连 Jellyfin 不可达。
@@ -18,7 +24,7 @@
 - 合同要求固定 **Jellyfin Server 12.3**；其他版本、`latest` 或网页版本号一律拒绝。
 - 工具记录组：`J`（当前工具实际经观测入口，不能当作独立直连证据）、`B-on`（固定 Slice Base，原默认缓存开启）、
   `B-off`（同一 Base，仅关闭 JSON 缓存）。三者使用同一服务器、同一素材、同一客户端策略。
-- 当前证据：[`artifacts/validation-evidence/S1/s1-1-baseline-20261025-05`](../../artifacts/validation-evidence/S1/s1-1-baseline-20261025-05)。
+- S1.1 基线证据：[`artifacts/validation-evidence/S1/s1-1-baseline-20261025-05`](../../artifacts/validation-evidence/S1/s1-1-baseline-20261025-05)。
 
 ## 1. 前置条件
 
@@ -34,7 +40,8 @@
 
 ## 2. 命令
 
-`cwd` 为仓库根；`RUN_ID` 使用新目录，不覆盖历史证据。
+`cwd` 为仓库根；`RUN_DIR` 使用新目录，不覆盖历史证据。以下为历史基线重跑命令，
+其中创建 / 删除容器、建库、写入素材与停止服务的步骤须在取得对应隔离环境操作授权后执行。
 
 ```bash
 RUN_DIR=artifacts/validation-evidence/S1/s1-1-baseline-$(date +%Y%m%d-%H%M)
@@ -78,7 +85,8 @@ RUN_DIR=artifacts/validation-evidence/S1/s1-1-baseline-$(date +%Y%m%d-%H%M)
 
 ## 4. 观测入口的边界
 
-`scripts/validation/observatory.py` 是唯一的旁路观测点，规则如下：
+`scripts/validation/observatory.py` 是基线工具的旁路观测点。以下为设计约束；第 1 条的
+“不合成”和第 2 条的“不缓冲”未完整实现，产品取消 / 不可达结论须使用前述直连补证。
 
 1. 每个请求**真实转发**到同一 12.3；不缓存、不重试、不合成、不跟随重定向。
 2. JSON 只保存**脱敏副本**与原始字节摘要；媒体只做流式计数与摘要，不缓冲完整视频。
@@ -126,7 +134,8 @@ MediaSource；先删除 STRM 扫描、再写回并扫描，Jellyfin 才会用同
   补证与新独立真实重放已完成，S1.4 最终 B PASS；完整 RJ / F-08 的结论须组合原证据与
   `s1-4-supplement-20261025-01/`、`s1-4-b-final-review-20261025-01/`，不能只依原行数判断。
   直连 J / C 的 Content-Length 逐值相同，以原始 JSON 和最终 B 更正为准，不采用补证
-  README 的“C chunked / 无长度头”错误说明。无需修复本工具，A 最终审查仍 PENDING。
+  README 的“C chunked / 无长度头”错误说明。工具限制保持记录，
+  [A 最终审查](../../Task/archive/S1-remove-playback-info-json-cache.md#a-final-review)已 PASS / CLOSED。
   该脚本不是通用 `--groups C` 入口，也不修改产品；证据见
   [`s1-4-candidate-20261025-01`](../../artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/README.md)。
 
@@ -151,20 +160,24 @@ MediaSource；先删除 STRM 扫描、再写回并扫描，Jellyfin 才会用同
 
 ## 8. 重跑与复现
 
-- 同一 `server.lock.json` + 相同素材摘要 + 相同 Base 即可重跑；新 run-dir 会得到新的
-  Item ID，场景只要求“同一次运行内同 ID”，不要求跨环境一致。
-- 复现他人证据：
+重跑应固定产品 Base、镜像 digest 和素材摘要。`--server-lock` 目前会因新实例的 server ID
+不同而失败，不作为可用的跨实例重建方法。取得隔离环境授权后，可以在新目录重新准备基线：
 
 ```bash
-SRC=artifacts/validation-evidence/S1/s1-1-baseline-20261025-05
-NEW=artifacts/validation-evidence/S1/s1-1-b-lock-replay
-.venv/bin/python scripts/validate_jellyfin_12_3.py prepare  --run-dir "$NEW" --server-lock "$SRC/server.lock.json"
+NEW=artifacts/validation-evidence/S1/s1-1-replay-$(date +%Y%m%d-%H%M%S)
+.venv/bin/python scripts/validate_jellyfin_12_3.py doctor   --run-dir "$NEW"
+.venv/bin/python scripts/validate_jellyfin_12_3.py prepare  --run-dir "$NEW" \
+    --server-version 12.3 --base-ref 6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5
 .venv/bin/python scripts/validate_jellyfin_12_3.py baseline --run-dir "$NEW" --cases RJ-02,RJ-04,RJ-05
 .venv/bin/python scripts/validate_jellyfin_12_3.py stop     --run-dir "$NEW"
 ```
 
-- 源码、工具、认证、素材或镜像变化后按影响重跑；`verify-evidence` 会拒绝工具 Head
-  与产品 Base 不一致或来源被篡改的证据包。
+与原证据比较 `server.lock.json` 的镜像 digest、产品 Base 及 `evidence/media-inventory.json`
+的素材摘要，再判断是否属于相同输入；仅镜像标签相同不足以复用结论。新目录会得到新的
+Item ID，场景只要求同一次运行内同 ID。上例仅执行三个 RJ 场景，不代表全量通过。
+
+源码、工具、认证、素材或镜像变化后按影响重跑；`verify-evidence` 的具体身份、覆盖与来源
+检查以其报告为准，工具自检不能替代原始事务和产品直连证据。
 
 ## 9. 工具自检
 
@@ -179,7 +192,7 @@ NEW=artifacts/validation-evidence/S1/s1-1-b-lock-replay
 
 ## 10. S1.1 功能补证（V1～V4）
 
-`scripts/validation/supplement.py` 只补当前 Task 的四个功能缺口，不替代全量基线，
+`scripts/validation/supplement.py` 只补历史 Task S1.1 的四个功能缺口，不替代全量基线，
 也不修复上文的工具限制。它不经过观测器：`B-on` / `B-off` 产品进程的上游直接是
 真实 Jellyfin 的地址，`J` 行是同一请求直连该 12.3 实例。
 

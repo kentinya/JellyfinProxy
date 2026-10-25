@@ -1,13 +1,16 @@
 # PlaybackInfo 按字段配置修改：S1 合同补充
 
+> 历史归档；原路径：`Task/drafts/playback-info-field-overrides.md`。本文保留当时的计划、审查和验证限制，
+> 不作为当前实施指令。归档说明见[历史索引](README.md)，当前行为见[配置与播放行为](../../docs/configuration.md)。
+
 日期：2026-10-24。用户新增要求：播放信息支持按字段修改，字段在配置文件中配置。
 后续明确：未提供配置时默认不改；本文件已按该要求同步为合同 v3 语义。
 合同 v4 仅调整验证范围与工具门槛，以下字段语义不变；验证方式以当前 Slice / Task 为准。
-本补充随 [Slice S1](../S1-remove-playback-info-json-cache.md) 合同 v3 于 2026-10-24 激活，
+本补充随 [Slice S1](S1-remove-playback-info-json-cache.md) 合同 v3 于 2026-10-24 激活，
 属于规范性必交付范围；本地实现及独立 B 审查已由
-[S1.3](../S1.3-playback-info-field-configuration.md)完成，F-08 真实 HTTP 闭环已由
-[S1.4](../S1.4-candidate-real-validation-and-handoff.md)完成并独立 B PASS；
-[A 最终审查](../S1-remove-playback-info-json-cache.md#a-final-review)于 2026-10-25 独立 PASS，S1 已关闭。
+[S1.3](S1.3-playback-info-field-configuration.md)完成，F-08 真实 HTTP 闭环已由
+[S1.4](S1.4-candidate-real-validation-and-handoff.md)完成并独立 B PASS；
+[A 最终审查](S1-remove-playback-info-json-cache.md#a-final-review)于 2026-10-25 独立 PASS，S1 已关闭。
 保持 Slice Base 不变，不将未发布检查点冒充发行。
 
 ## 配置界面
