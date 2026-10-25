@@ -1,27 +1,14 @@
-# Task S1.2 — 缓存撤除与保留能力回归
+# NO ACTIVE IMPLEMENTATION TASK
 
-当前 B 计划见 [S1.2 完整计划](Task/S1.2-remove-playback-info-cache.md)，
-Parent Slice 为已激活的 [S1 合同 v4](Task/S1-remove-playback-info-json-cache.md)。
+最近完成的 S1.2 计划 / B 独立审查见 [S1.2 完整记录](Task/S1.2-remove-playback-info-cache.md)。
+Parent Slice 为已激活的 [S1 合同 v4](Task/S1-remove-playback-info-json-cache.md)。当前无活动实施 Task。
 
 ```text
-Task ID: S1.2
-Work Type: SLICE TASK
-Parent Slice: S1
-Status: READY FOR B REVIEW
-Task Base: 7a436110eb8456bacb350b015835246b6802ffa2
-Contract Checkpoint: eb2775e53f5c26f7c6dd46294e62249e7bb8aa63
-Plan Checkpoint: 7a69a0311dbd7b4ae792172a780770cd3e06023a
-Implementation Head: 74992bbd004a53c0522bb49e5c0229131b00ec88
-Difficulty: High
-Test Level: T4
-Planner / Reviewer: B
-Independent Review: PENDING — implementation delivered, B review not started
-```
+Last Completed Task: S1.2 PASS; local implementation head `74992bbd004a53c0522bb49e5c0229131b00ec88`; B-reviewed range and review follow-up recorded in Task/S1.2-remove-playback-info-cache.md.
 
-S1.2 已实施：PlaybackInfo JSON 缓存及四项专属配置、缓存绕过与诊断已撤除，逐请求回源、
-修改绕过原文、直链填充、Video 302 和流式回退保留；AC-1～8 本地验收已映射，聚焦 119 项
-与完整 167 项 pytest 通过。旧字段默认规则（ProtocolFileRule）仍按计划保留至 S1.3，
-最终真实候选对照在 S1.4；本检查点不是 Slice 完成。
+S1.2 仅完成其范围内 AC-1～8 本地闭环；RO-7 / RO-9 及真实候选、真实客户端、打包仍 NOT RUN，
+不是 Slice 完成。旧字段默认规则（ProtocolFileRule）按合同留至 S1.3。README 的日志范围笔误已由 B
+在本轮工作区中修正；该纯文档后继需作为正常检查点保存。
 
 实施证据：`artifacts/validation-evidence/S1/s1-2-impl-20261025-01/`（未跟踪，未入 Git）。
 假上游结果不冒充真实 Jellyfin；RO-7 / RO-9 及真实客户端、打包仍 NOT RUN。
@@ -37,5 +24,5 @@ Slice ACTIVE，A Final Review PENDING。历史
 [BUG-001](Task/BUG-001-media-source-cache-invalidation.md) 独立 B PASS 记录保留。
 
 ```text
-Next Action: B independently reviews S1.2 (7a436110..74992bbd) and re-assesses all RO
+Next Action: B plans S1.3 field-configuration Task within active Slice v4
 ```
