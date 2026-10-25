@@ -225,6 +225,7 @@ class Context:
         catalog: Mapping[str, Any],
         origin: MediaServer,
         media_port: int,
+        proxy_config: Mapping[str, Any] | None = None,
     ) -> None:
         self.paths = paths
         self.container = container
@@ -232,6 +233,8 @@ class Context:
         self.catalog = catalog
         self.origin = origin
         self.media_port = media_port
+        #: The real product TOML the control groups were started with.
+        self.proxy_config: dict[str, Any] = dict(proxy_config or {})
 
     def remote_url(self, target: str) -> str:
         return f"http://{self.container.gateway}:{self.media_port}/{target.lstrip('/')}"
@@ -395,6 +398,12 @@ def check_bypass_matrix(
         "global_video": global_video,
         "overlap_video": overlap_video,
         "jellyfin_direct_video": direct_video,
+        "overlap_client_listed_in": {
+            "bypass_clients": "OverlapClient" in (ctx.proxy_config.get("bypass_clients") or []),
+            "playback_bypass_clients": "OverlapClient"
+            in (ctx.proxy_config.get("playback_bypass_clients") or []),
+            "video_bypass_clients": "OverlapClient" in (ctx.proxy_config.get("video_bypass_clients") or []),
+        },
     }
     observed["ok"] = (
         plain_info["status"] == 200
@@ -408,16 +417,19 @@ def check_bypass_matrix(
         and overlap_video["status"] == direct_video["status"] == 200
         and not global_video["location_digest"]
         and not overlap_video["location_digest"]
+        and all(observed["overlap_client_listed_in"].values())
     )
     recorder.add(
         "V2-bypass-global-and-overlap",
         session.group,
-        "the global client bypasses both routes, the overlapping client bypasses both listed routes, "
-        "and the plain client is still rewritten and redirected",
+        "the global client bypasses both routes, a client listed in the global table and in both route tables "
+        "bypasses too, and the plain client is still rewritten and redirected",
         observed,
         ac="AC-3, AC-5, AC-6",
         notes=(
             "configuration is the real product TOML (matrix_overlap profile) written by the tool",
+            "OverlapClient appears in bypass_clients *and* in both per-route lists, so this is the configured "
+            "global / branch overlap rather than two disjoint lists",
             "direct Jellyfin rows are the same requests without the proxy",
         ),
     )
@@ -452,6 +464,13 @@ def check_id_resolution(ctx: Context, session: Session, recorder: Recorder) -> N
     digest_b = _digest(_media_url(ctx.catalog, "remote_two"))
     hyphenated = f"{b_id[0:8]}-{b_id[8:12]}-{b_id[12:16]}-{b_id[16:20]}-{b_id[20:32]}"
 
+    # Seed both ids inside this check so the conflict rows below never depend on
+    # an earlier scenario's request order.
+    seeds = {
+        "remote": session.playback_info(a_id, "CacheOnly"),
+        "remote_two": session.playback_info(b_id, "CacheOnly"),
+    }
+
     cases = {
         "query_wins_over_path": (f"/Videos/{a_id}/stream?static=true&MediaSourceId={b_id}", digest_b),
         "query_same_as_path": (f"/Videos/{a_id}/stream?static=true&MediaSourceId={a_id}", digest_a),
@@ -465,26 +484,68 @@ def check_id_resolution(ctx: Context, session: Session, recorder: Recorder) -> N
             digest_b,
         ),
     }
+    # Both query spellings of the same parameter in one URL, pointing at two
+    # different seeded sources. The product reads ``MediaSourceId`` first and only
+    # falls back to ``mediaSourceId``, so the exact-name occurrence decides the
+    # target no matter which one appears first; the rows swap both the order and
+    # which spelling carries which id to show that.
+    conflict_cases = {
+        "conflict_exact_a_then_lower_b": (
+            f"/Videos/{a_id}/stream?static=true&MediaSourceId={a_id}&mediaSourceId={b_id}",
+            digest_a,
+        ),
+        "conflict_lower_b_then_exact_a": (
+            f"/Videos/{a_id}/stream?static=true&mediaSourceId={b_id}&MediaSourceId={a_id}",
+            digest_a,
+        ),
+        "conflict_exact_b_then_lower_a": (
+            f"/Videos/{b_id}/stream?static=true&MediaSourceId={b_id}&mediaSourceId={a_id}",
+            digest_b,
+        ),
+        "conflict_lower_a_then_exact_b": (
+            f"/Videos/{b_id}/stream?static=true&mediaSourceId={a_id}&MediaSourceId={b_id}",
+            digest_b,
+        ),
+    }
     observed: dict[str, Any] = {
+        "seeds": seeds,
         "seeded_targets": {"remote": digest_a, "remote_two": digest_b},
         "hyphenated_query_length": len(hyphenated),
+        "priority_rule": (
+            "the exact query name MediaSourceId wins over mediaSourceId regardless of order, and either "
+            "spelling still wins over the path id"
+        ),
         "cases": {},
+        "conflict_cases": {},
     }
-    all_ok = True
+    all_ok = (
+        seeds["remote"]["status"] == 200 and seeds["remote_two"]["status"] == 200
+    )
     for label, (path, expected) in cases.items():
         row = session.video(path)
         row["expected_digest"] = expected
         row["ok"] = row["status"] == 302 and row["location_digest"] == expected
         all_ok = all_ok and row["ok"]
         observed["cases"][label] = row
+    for label, (path, expected) in conflict_cases.items():
+        row = session.video(path)
+        row["expected_digest"] = expected
+        row["ok"] = row["status"] == 302 and row["location_digest"] == expected
+        all_ok = all_ok and row["ok"]
+        observed["conflict_cases"][label] = row
     observed["ok"] = all_ok
     recorder.add(
         "V2-id-priority-and-uuid",
         session.group,
-        "with two real seeded sources the query id wins over the path id, and both UUID spellings resolve to the seeded URL",
+        "with two real seeded sources the query id wins over the path id, both UUID spellings resolve, and a URL "
+        "carrying two conflicting query names resolves to the exact MediaSourceId spelling",
         observed,
         ac="AC-6, AC-9",
-        notes=("both ids were seeded by their own real PlaybackInfo response in this proxy process",),
+        notes=(
+            "both ids were seeded by their own real PlaybackInfo response at the start of this check",
+            "the conflict rows put two different real seeded ids in the same Video URL and swap both the order and "
+            "which spelling carries which id, then compare the resulting Location digest",
+        ),
     )
 
 
@@ -513,6 +574,17 @@ def check_second_mapping_preserved(
     digest_b = _digest(_media_url(ctx.catalog, "remote_two"))
     invalid_local = "/media/movies/Local/Local Sample (2020)/Local Sample (2020).mp4"
 
+    # Seed the second mapping *before* the target cycle and then never request its
+    # PlaybackInfo again: any PlaybackInfo response (HIT included) re-writes the
+    # mapping, so only a Video-only check can show that the seeded entry survived.
+    second_seed = session.playback_info(second_id, "CacheOnly")
+    seeded_video = session.video(second_stream)
+    seed_ok = (
+        second_seed["status"] == 200
+        and seeded_video["status"] == 302
+        and seeded_video["location_digest"] == digest_second
+    )
+
     steps: list[dict[str, Any]] = []
     sequence_ok = True
 
@@ -522,11 +594,9 @@ def check_second_mapping_preserved(
         target_playback = session.playback_info(dynamic_id)
         target_bypass = session.playback_info(dynamic_id, "CacheOnly")
         target_video = session.video(dynamic_stream)
-        second_playback = session.playback_info(second_id, "CacheOnly")
         second_video = session.video(second_stream)
         second_ok = (
-            second_playback["status"] == 200
-            and second_video["status"] == 302
+            second_video["status"] == 302
             and second_video["location_digest"] == digest_second
         )
         if expected is None:
@@ -541,7 +611,6 @@ def check_second_mapping_preserved(
                 "target_playback": target_playback,
                 "target_playback_cache_bypass": target_bypass,
                 "target_video": target_video,
-                "second_playback": second_playback,
                 "second_video": second_video,
                 "second_mapping_preserved": second_ok,
                 "target_behaviour_ok": target_ok,
@@ -553,30 +622,34 @@ def check_second_mapping_preserved(
     step("valid_remote_b", ctx.remote_url("remote-b.mp4"), digest_b)
 
     final_second = session.video(second_stream)
-    final_second_bypass = session.playback_info(second_id, "CacheOnly")
-    direct_second = direct_j.video(second_stream)
     observed = {
         "dynamic_item_id": dynamic_id,
         "second_item_id": second_id,
+        "seeding": {
+            "playback": second_seed,
+            "video": seeded_video,
+            "ok": seed_ok,
+        },
         "second_target_digest": digest_second,
         "dynamic_final_target_digest": digest_b,
         "steps": steps,
         "final_second_video": final_second,
-        "final_second_playback_cache_bypass": final_second_bypass,
-        "jellyfin_direct_second_video": direct_second,
-        "ok": sequence_ok
+        "second_playback_requests_during_cycle": 0,
+        "ok": seed_ok
+        and sequence_ok
         and final_second["status"] == 302
-        and final_second["location_digest"] == digest_second
-        and final_second_bypass["status"] == 200,
+        and final_second["location_digest"] == digest_second,
     }
     recorder.add(
         "V1-second-mapping-preserved",
         session.group,
-        "the second seeded id keeps its own 302 target through the dynamic item's valid -> invalid -> valid cycle, "
-        "and only the target id changes",
+        "the second mapping seeded on its own before the cycle keeps its 302 target through the dynamic item's "
+        "valid -> invalid -> valid cycle, and only the target id changes",
         observed,
         ac="AC-7",
         notes=(
+            "the second id is seeded once up front and no later PlaybackInfo is sent for it, so a re-populated "
+            "mapping cannot be mistaken for a preserved one",
             "every transition is produced by a real library refresh (remove STRM, scan, rewrite STRM, scan)",
             "the second item keeps remote-a while the dynamic item ends at remote-b, so the last step proves the two "
             "mappings were not collapsed into one",
@@ -831,6 +904,9 @@ def run(run_dir: Path, *, groups: tuple[str, ...] = ("B-off", "B-on")) -> int:
                 profile=PROFILE,
             )
             configs[group] = toml_dumps(plan.config)
+            # The bypass check verifies the overlapping identity really is listed
+            # in the global table as well, so the live config is attached here.
+            ctx.proxy_config = dict(plan.config)
             sessions[group] = Session(group, f"http://127.0.0.1:{port}", credentials)
             print(
                 f"-- group {group} port={port} cache={GROUP_CACHE[group]} "

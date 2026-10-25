@@ -187,17 +187,18 @@ RUN_DIR=artifacts/validation-evidence/S1/s1-1-supplement-<timestamp>
 |---|---|---|
 | `V2-raw-unseeded-*` | `/api/danmu/{id}/raw`、`/emby/api/danmu/{id}/raw` | 未种入时状态与正文须与直连 J 相同，不得 302 |
 | `V2-raw-after-seeding` | 同上 + `PlaybackInfo` | 种入后须 302 到该 Item 自己的远端 URL |
-| `V2-bypass-global-and-overlap` | `PlaybackInfo` + `/Videos/{id}/stream` | 全局 / 重叠客户端保持上游 `Protocol`、无 302；普通客户端仍被改写并 302 |
+| `V2-bypass-global-and-overlap` | `PlaybackInfo` + `/Videos/{id}/stream` | 全局 / 重叠客户端保持上游 `Protocol`、无 302；普通客户端仍被改写并 302。`OverlapClient` 必须同时出现在全局表与两个分支表（判定附带 `overlap_client_listed_in`） |
 | `V2-bypass-route-independence` | 同上 | `VideoOnly` 只绕过 Video，`CacheOnly` 仍被改写 |
-| `V2-id-priority-and-uuid` | `/Videos/...` 的 query 与 path 两种写法 | 两个已种入源下 query 覆盖 path，连字符与紧凑 UUID 都命中同一目标 |
-| `V1-second-mapping-preserved` | `PlaybackInfo` + `/Videos/...` | 第二映射（remote-a）在目标 ID 有效→无效→有效全过程中保持 302，最终与目标的 remote-b 不同 |
+| `V2-id-priority-and-uuid` | `/Videos/...` 的 query 与 path 两种写法 | 两个已种入源下 query 覆盖 path，连字符与紧凑 UUID 都命中同一目标；同一 URL 同时带 `MediaSourceId` 与 `mediaSourceId` 且指向不同源时，按产品既有优先级（精确名 `MediaSourceId` 优先）解析，顺序与指向各交换一次 |
+| `V1-second-mapping-preserved` | `PlaybackInfo`（仅种入一次）+ `/Videos/...` | 第二映射（remote-a）在目标 ID 有效→无效→有效全过程中保持 302，最终与目标的 remote-b 不同。种子之后循环内不再为该 ID 发 `PlaybackInfo`（HIT 也会重写映射），`second_playback_requests_during_cycle=0` |
 | `V3-cancel-upstream-release` | `/Videos/...`（`VideoOnly` 客户端） | 传输中读 8192 字节即断开；受控源账本显示 `aborted_by_client=true` 且 `bytes_sent` < `Content-Length`；后续 Range 请求仍得真实字节 |
 | `V4-direct-unreachable-and-recovery` | `PlaybackInfo` + `/System/Info/Public` | 停容器期间产品自身报错（非观测器合成），重启后 B-off 冷 / B-on 热均恢复 200 |
 
-配置为产品自身 TOML 的 `matrix_overlap` 组合（`bypass_clients=["GlobalClient"]`、
+配置为产品自身 TOML 的 `matrix_overlap` 组合（`bypass_clients=["GlobalClient","OverlapClient"]`、
 `playback_bypass_clients=["PlaybackOnly","OverlapClient"]`、
 `video_bypass_clients=["VideoOnly","OverlapClient"]`、
-`playback_cache_bypass_clients=["CacheOnly"]`），两组仅差 `playback_info_cache_enabled`。
+`playback_cache_bypass_clients=["CacheOnly"]`），`OverlapClient` 同时列入全局与两个分支表，
+因此重叠行是真实的全局 / 分支交集而非两组不相交列表；两组仅差 `playback_info_cache_enabled`。
 `throttle` 夹具在补证时被改写为限速目标（保留同一 Item ID），因此取消一定发生在
 传输途中；这是素材操作，不是产品改动。
 

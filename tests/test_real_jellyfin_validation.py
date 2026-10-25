@@ -604,11 +604,61 @@ def test_supplement_profiles_overlap_is_a_real_product_configuration() -> None:
         cache_enabled=False,
     )
     parsed = __import__("tomllib").loads(toml_dumps(config))
+    assert supplement.PROFILE == "matrix_overlap"
     assert "OverlapClient" in parsed["playback_bypass_clients"]
     assert "OverlapClient" in parsed["video_bypass_clients"]
     assert "GlobalClient" in parsed["bypass_clients"]
     assert parsed["playback_info_cache_enabled"] is False
     assert supplement.GROUP_CACHE == {"B-on": True, "B-off": False}
+
+
+def test_supplement_overlap_identity_is_configured_globally_and_per_route() -> None:
+    """The overlap row must be the real global/branch intersection."""
+
+    config = proxy_config(
+        upstream_url="http://127.0.0.1:18096",
+        port=18098,
+        profile=supplement.PROFILE,
+        log_dir=Path("/tmp/x"),
+        cache_enabled=True,
+    )
+    for key in ("bypass_clients", "playback_bypass_clients", "video_bypass_clients"):
+        assert "OverlapClient" in config[key], key
+    # The plain (single-route) matrix must not silently gain the overlap client.
+    plain = proxy_config(
+        upstream_url="http://127.0.0.1:18096",
+        port=18098,
+        profile="matrix",
+        log_dir=Path("/tmp/x"),
+        cache_enabled=False,
+    )
+    assert "OverlapClient" not in plain["bypass_clients"]
+    assert "OverlapClient" not in plain["video_bypass_clients"]
+
+
+def test_supplement_id_priority_rows_use_two_seeded_query_names() -> None:
+    """The query-name conflict rows must mix both spellings of one parameter."""
+
+    import inspect
+
+    source = inspect.getsource(supplement.check_id_resolution)
+    # Both spellings appear inside a single URL, i.e. a real conflict, not two
+    # separate rows that each use only one spelling.
+    assert source.count("MediaSourceId=") >= 2
+    assert "mediaSourceId=" in source
+    assert "seeds" in source
+
+
+def test_supplement_second_mapping_is_not_reseeded_after_the_cycle_starts() -> None:
+    """V1 must not re-request the second id's PlaybackInfo during the cycle."""
+
+    import inspect
+
+    source = inspect.getsource(supplement.check_second_mapping_preserved)
+    step_body = source.split("def step(", 1)[1].split("step(\"valid_remote_a\"", 1)[0]
+    # The step may request the target id's PlaybackInfo, but never the second id's.
+    assert "second_id" not in step_body
+    assert "second_video = session.video(second_stream)" in step_body
 
 
 def test_supplement_origin_summary_detects_early_release() -> None:

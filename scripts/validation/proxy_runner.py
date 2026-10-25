@@ -76,7 +76,10 @@ def proxy_config(
             "playback_cache_bypass_clients": ["CacheOnly"],
         },
         "matrix_overlap": {
-            "bypass_clients": ["GlobalClient"],
+            # ``OverlapClient`` is deliberately listed in the global table *and* in
+            # both per-route tables, so a real configuration exercises the
+            # global-vs-branch overlap instead of two disjoint bypass lists.
+            "bypass_clients": ["GlobalClient", "OverlapClient"],
             "playback_bypass_clients": ["PlaybackOnly", "OverlapClient"],
             "video_bypass_clients": ["VideoOnly", "OverlapClient"],
             "playback_cache_bypass_clients": ["CacheOnly"],
