@@ -4,8 +4,9 @@
 后续明确：未提供配置时默认不改；本文件已按该要求同步为合同 v3 语义。
 合同 v4 仅调整验证范围与工具门槛，以下字段语义不变；验证方式以当前 Slice / Task 为准。
 本补充随 [Slice S1](../S1-remove-playback-info-json-cache.md) 合同 v3 于 2026-10-24 激活，
-属于规范性必交付范围；产品尚未实现。保持 Slice Base 不变；首个 B Task
-[S1.1 验证基线](../S1.1-real-jellyfin-12.3-baseline.md)已规划，字段实现仍待后续 Task，不升级产品版本。
+属于规范性必交付范围；本地实现及独立 B 审查已由
+[S1.3](../S1.3-playback-info-field-configuration.md)完成，F-08 真实闭环仍待
+[S1.4](../S1.4-candidate-real-validation-and-handoff.md)。保持 Slice Base 不变，不将未发布检查点冒充发行。
 
 ## 配置界面
 
@@ -110,4 +111,6 @@ F-08 的值用于证明用户配置优先级，不把改变声明的支持能力
 复杂值、非法配置、缺字段、根字段和非标准形状以单元 / 假上游确定性覆盖；实际服务确有对应
 字段时追加真实证据，结果分开报告。
 
-当前：合同补充已激活；产品实现、配置加载验证、pytest、真实 Jellyfin 和独立审查均 NOT RUN。
+当前（2026-10-25）：F-01～07 本地实现、配置加载验证、pytest 和 S1.3 独立 B 审查 PASS；
+F-08 候选真实 Jellyfin 闭环 NOT RUN，留给 S1.4。Slice ACTIVE，A Final Review PENDING；
+本状态协调不改变任何字段合同。

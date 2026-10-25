@@ -16,16 +16,18 @@
   `74992bbd004a53c0522bb49e5c0229131b00ec88`；AC-1～8 本地范围通过。B 审查发现并修正
   README 将 `client_identified` 覆盖面写窄的纯文档问题；全套 pytest 167 passed。证据见
   `artifacts/validation-evidence/S1/s1-2-impl-20261025-01/`，本地假上游不代表真实 12.3。
-- [S1.3](Task/S1.3-playback-info-field-configuration.md)：**READY FOR B REVIEW**，Task Base
-  `62eb64c932fea1b0f02afd941c2108468df91d6d`；实现 Head `a0cc7cddff32da585923c5ff11d3977ea910d87a`
-  （本地实现候选，非最终产品 Head）。已交付缺省 / 空表不改、显式字段表、严格启动校验与最终
-  直链一致性；独立 B 审查尚 PENDING。证据见
-  `artifacts/validation-evidence/S1/s1-3-impl-20261025-01/`（未跟踪），为假上游与单元结果。
-  F-08 / 最终真实候选对照留给 S1.4。
-- S1.4 最终真实对照待 S1.3 获得 B PASS 后逐步规划。
-- RO-1～9 均未完成；候选 C / F-01～08 / C 的 RJ-01～12 为 NOT RUN，
-  最终产品 Implementation Head 为 NOT SET，A Final Review **PENDING**。
+- [S1.3](Task/S1.3-playback-info-field-configuration.md)：独立 B **PASS**，完整审查
+  `62eb64c932fea1b0f02afd941c2108468df91d6d..a0cc7cddff32da585923c5ff11d3977ea910d87a`
+  及 e903fa9 文档后继。AC-1～9 本地成立；B 独立 41 项、五组 HTTP 假上游闭环通过，
+  复用相同候选的 213 项全套。证据：`artifacts/validation-evidence/S1/s1-3-b-review-20261025-01/`。
+  这不是真实 Jellyfin 或 Slice PASS。
+- [S1.4](Task/S1.4-candidate-real-validation-and-handoff.md)：**PLANNED**，Task Base 固定为
+  产品输入 `a0cc7cddff32da585923c5ff11d3977ea910d87a`，Plan Checkpoint / Implementation Head
+  为 NOT SET。补足候选 C 的 RJ-01～12、F-08、适用原生打包及最终交接；工具可选，未开始实施。
+- 全部 RO 已重评：RO-1～6 本地 PASS，F-01～07 本地 PASS；C 的真实矩阵和 F-08 NOT RUN，
+  RO-7 / RO-8 / RO-9 未完成。最终产品 Implementation Head NOT SET，A Final Review **PENDING**。
+  当前版本仍为未发布 0.9.3 检查点，变化记录在 Unreleased；不自动编号或发布。
 
 ```text
-Next Action: B independently reviews S1.3 (Task Base 62eb64c..a0cc7cd)
+Next Action: Developer implements and validates planned S1.4
 ```

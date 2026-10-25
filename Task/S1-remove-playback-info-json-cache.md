@@ -25,7 +25,9 @@ A Final Review: PENDING
 Contract Checkpoint 已从 Git 解析，并由激活后的纯文档提交补记；该后继不移动 Base，不是实现候选。
 首个 B Task [S1.1 — 真实 12.3 验证基线](S1.1-real-jellyfin-12.3-baseline.md)已由 Developer 实施并
 交付工具与 J / B-on / B-off 基线；经 RR-1 / RR-2 补证及独立真实重放，当前为 B PASS，
-详见该 Task 文末最终审查。S1.2 计划已发布；候选 C 对照与 A 最终审查未完成。
+详见该 Task 文末最终审查。S1.2 缓存撤除与 S1.3 字段配置的本地交付均已获独立 B PASS；
+[S1.4 最终真实验证与交接](S1.4-candidate-real-validation-and-handoff.md)已规划，
+候选 C 对照与 A 最终审查未完成。
 激活前已有本会话的根 SLICE / TASK 修改、三份未跟踪方案文档及 `artifacts/`；
 激活时只提交前五份合同相关文档，保留既有证据与用户文件。
 
@@ -46,7 +48,8 @@ Jellyfin 获取对应结果；其他现有代理、媒体策略、客户端绕�
 
 ## 当前基线与架构边界
 
-当前产品为 `version.py` 定义的 0.9.3。`PlaybackInfoCache` 按 Item ID 存原始上游 JSON，
+以下为固定 Slice Base 的改前行为（不是当前实现）：`version.py` 为 0.9.3，
+`PlaybackInfoCache` 按 Item ID 存原始上游 JSON，
 默认 TTL 21600 秒、容量 4096；缓存键使不同用户、认证、设备、请求参数 / 请求体、方法及
 两种 PlaybackInfo 前缀共享正文。缓存绕过与正文修改绕过相互独立。
 
@@ -265,9 +268,9 @@ Task Base 与拆分由 B 依据已激活合同与实际结果逐步制定，不�
 | 建议单元 | 完整交付闭环 | 依赖 / 结果映射 | 当前状态 |
 |---|---|---|---|
 | [S1.1 — 真实 12.3 验证基线](S1.1-real-jellyfin-12.3-baseline.md) | 核实真实构建与隔离素材，取得 J、B-on、B-off 功能基线和可复核步骤，明确旧路由限制；工具可选 | 首个 Task；支撑 RO-1～8 的基线，准备 RO-9 对照 | 独立 B PASS；RR-1 / RR-2 补证及独立真实重放完成；C 对照 NOT RUN |
-| [S1.2 — 缓存撤除与保留能力回归](S1.2-remove-playback-info-cache.md) | 原子完成 JSON 缓存撤除、旧配置 / 诊断清理和对应本地回归 | 依赖 S1.1；RO-1～6 | PLANNED；完整范围、AC 和测试已发布，实施 NOT RUN |
-| S1.3 — 字段配置与策略闭环 | 完成两个作用域、默认 / 空表、类型校验、绕过、直链一致性和本地验收，同步新版本与全部适用文档 | 依赖 S1.2；RO-2～6、8、9，F-01～08 | 尚未由 B 规划 / NOT RUN |
-| S1.4 — 候选真实验证与交接 | 默认 / 定制配置执行全部 RJ、对照差异、必要修正与重跑、独立 B 审查及最终 RO 核对 | 依赖 S1.3；RO-1～9 | 尚未由 B 规划 / NOT RUN |
+| [S1.2 — 缓存撤除与保留能力回归](S1.2-remove-playback-info-cache.md) | 原子完成 JSON 缓存撤除、旧配置 / 诊断清理和对应本地回归 | 依赖 S1.1；RO-1～6 | 独立 B PASS；本地 AC-1～8 成立，真实 C 待 S1.4 |
+| [S1.3 — 字段配置与策略闭环](S1.3-playback-info-field-configuration.md) | 完成两个作用域、默认 / 空表、类型校验、绕过、直链一致性和本地验收；最终版本 / 文档交接归 S1.4 | 依赖 S1.2；RO-2～6、8、9；F-01～07 本地，F-08 归 S1.4 | 独立 B PASS；AC-1～9 本地成立，F-08 NOT RUN |
+| [S1.4 — 候选真实验证与交接](S1.4-candidate-real-validation-and-handoff.md) | 默认 / 定制配置执行全部 RJ、F-08、对照差异、适用构建、必要修正与重跑、独立 B 审查及最终 RO 核对 | 依赖 S1.3；RO-1～9 | PLANNED；Task Base a0cc7cd，候选真实验证及实施 NOT RUN |
 
 ## Closure Packet
 
@@ -276,8 +279,15 @@ Task Base 与拆分由 B 依据已激活合同与实际结果逐步制定，不�
   [S1.1 计划](S1.1-real-jellyfin-12.3-baseline.md)的 Plan Checkpoint 为 `eac3245`；
   S1.1 已审实现 Head 为 `56d76339f2c3fae7cd2ef550cddedc0d9fb73aa5`，产品未变；
   原工具 Head 为 `cfc790e22dc56c2016e09fd49b8e4189ce00a027`。最新独立 B 决定 PASS，
-  RR-1 / RR-2 与 V3 / V4 已核实并独立真实重放；S1.2 PLANNED，实施 Head 为 NOT SET。
-- RO-1～9 均未完成；F-01～08 / 候选 C 的 RJ-01～12 为 NOT RUN，S1.1 的基线 PASS 不构成 Slice PASS。
+  RR-1 / RR-2 与 V3 / V4 已核实并独立真实重放。
+- S1.2 独立 B PASS，实施 Head `74992bbd004a53c0522bb49e5c0229131b00ec88`；S1.3 独立 B PASS，
+  实施 Head `a0cc7cddff32da585923c5ff11d3977ea910d87a`，文档后继 `e903fa9`。
+  S1.3 B 证据：`artifacts/validation-evidence/S1/s1-3-b-review-20261025-01/`，
+  41 项独立聚焦、五组 HTTP 假上游闭环通过，复用相同候选全量 213 passed。
+  S1.4 已规划，Plan Checkpoint / 最终 Implementation Head NOT SET。
+- 全部 RO 重评见 S1.3 独立审查：RO-1～6 及 F-01～07 本地范围 PASS，但真实 C 全矩阵、
+  F-08、适用打包及最终交接仍 NOT RUN；RO-7 / RO-8 / RO-9 未完成，其他 RO 最终结论也等待
+  真实候选对照。S1.1 基线与局部 Task PASS 均不构成 Slice PASS。
 - 真实 Jellyfin 构建 / 素材 / 配置 / 测试工具身份与原始证据：见 S1.1 报告
   （`artifacts/validation-evidence/S1/s1-1-baseline-20261025-05/`），补证为
   `artifacts/validation-evidence/S1/s1-1-supplement-20261025-01/`；原 B 审查证据为
@@ -314,6 +324,11 @@ Task Base 与拆分由 B 依据已激活合同与实际结果逐步制定，不�
   12.3 重放通过，18/18 补证与 182 项回归通过。全部 RO 重评仍未完成；B 发布 S1.2
   缓存撤除计划，未开始产品实施。此条只更新索引 / 状态，不改变合同或签发 A 结论。
 
+- 2026-10-25：S1.2 / S1.3 完整 Base..Head 独立 B PASS，缓存撤除及字段配置本地交付成立；
+  全部 RO 重评后发布 S1.4 真实候选 / 版本交接计划。S1.3 未升版本，实际仍为未发布 0.9.3
+  检查点 / Unreleased；未指定后继发行号，不伪造版本或发行。这里只协调建议拆分、事实状态和
+  证据索引，不变更 RO / 字段语义或签发 A 结论。必需 C 矩阵和最终交接未完成。
+
 ## A Final Review
 
 ```text
@@ -325,10 +340,11 @@ Closure Reconciliation: PENDING
 Next Action: PENDING — AFTER IMPLEMENTATION AND INDEPENDENT B REVIEW
 ```
 
-当前 S1.1 改前基线已获独立 B PASS，S1.2 实施计划已发布；产品行为与版本尚未修改，
-未 push / 发布。后续按 Task 完成缓存撤除、字段配置和最终真实对照。只有满足上述门槛并获独立 A 最终 PASS
+当前 S1.1 基线及 S1.2 / S1.3 本地交付均获独立 B PASS；缓存撤除和字段配置已经实现，
+版本仍为未发布 0.9.3 检查点，未 push / 发布。后续按 S1.4 完成真实候选对照和最终交接。
+只有满足上述门槛并获独立 A 最终 PASS
 才能关闭 Slice；未运行真实服务验证时不接受“其他功能完好保留”的完成结论。
 
 ```text
-Next Action: Developer implements planned S1.2
+Next Action: Developer implements and validates planned S1.4
 ```
