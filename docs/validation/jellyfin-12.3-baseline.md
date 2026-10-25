@@ -11,6 +11,10 @@
 部分 PASS 判据不足，须核对原始证据；05 的校验结果实际为 20 PASS + 1 WARN，
 不是 21 项全 PASS。下文保留现有工具用法，不代表这些限制已修复。
 
+针对上述限制，S1.1 的 V1～V4 功能补证改用 `scripts/validation/supplement.py`（见第 10 节）：
+产品直连真实 Jellyfin、只用已存在的 PlaybackInfo / Video / raw 入口、媒体只做有界读取，
+提前取消与上游释放由受控源的 socket 账本判定。观测器不参与该路径。
+
 - 合同要求固定 **Jellyfin Server 12.3**；其他版本、`latest` 或网页版本号一律拒绝。
 - 工具记录组：`J`（当前工具实际经观测入口，不能当作独立直连证据）、`B-on`（固定 Slice Base，原默认缓存开启）、
   `B-off`（同一 Base，仅关闭 JSON 缓存）。三者使用同一服务器、同一素材、同一客户端策略。
@@ -163,3 +167,40 @@ NEW=artifacts/validation-evidence/S1/s1-1-b-lock-replay
 自检只证明工具逻辑：请求关联与计数、版本漂移拒绝、未白名单差异失败、摘要不被脱敏掩盖、
 凭据不落盘、停止只处理所有权匹配的资源。**假上游与单元结果不能替代真实 12.3 基线，
 也不能作为任何客户端兼容结论。**
+
+## 10. S1.1 功能补证（V1～V4）
+
+`scripts/validation/supplement.py` 只补当前 Task 的四个功能缺口，不替代全量基线，
+也不修复上文的工具限制。它不经过观测器：`B-on` / `B-off` 产品进程的上游直接是
+真实 Jellyfin 的地址，`J` 行是同一请求直连该 12.3 实例。
+
+```bash
+RUN_DIR=artifacts/validation-evidence/S1/s1-1-supplement-<timestamp>
+.venv/bin/python scripts/validate_jellyfin_12_3.py doctor  --run-dir "$RUN_DIR"
+.venv/bin/python scripts/validate_jellyfin_12_3.py prepare --run-dir "$RUN_DIR" \
+    --server-version 12.3 --base-ref 6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5
+.venv/bin/python scripts/validation/supplement.py --run-dir "$RUN_DIR"
+.venv/bin/python scripts/validate_jellyfin_12_3.py stop --run-dir "$RUN_DIR"
+```
+
+| 检查 | 走的产品入口 | 判定依据 |
+|---|---|---|
+| `V2-raw-unseeded-*` | `/api/danmu/{id}/raw`、`/emby/api/danmu/{id}/raw` | 未种入时状态与正文须与直连 J 相同，不得 302 |
+| `V2-raw-after-seeding` | 同上 + `PlaybackInfo` | 种入后须 302 到该 Item 自己的远端 URL |
+| `V2-bypass-global-and-overlap` | `PlaybackInfo` + `/Videos/{id}/stream` | 全局 / 重叠客户端保持上游 `Protocol`、无 302；普通客户端仍被改写并 302 |
+| `V2-bypass-route-independence` | 同上 | `VideoOnly` 只绕过 Video，`CacheOnly` 仍被改写 |
+| `V2-id-priority-and-uuid` | `/Videos/...` 的 query 与 path 两种写法 | 两个已种入源下 query 覆盖 path，连字符与紧凑 UUID 都命中同一目标 |
+| `V1-second-mapping-preserved` | `PlaybackInfo` + `/Videos/...` | 第二映射（remote-a）在目标 ID 有效→无效→有效全过程中保持 302，最终与目标的 remote-b 不同 |
+| `V3-cancel-upstream-release` | `/Videos/...`（`VideoOnly` 客户端） | 传输中读 8192 字节即断开；受控源账本显示 `aborted_by_client=true` 且 `bytes_sent` < `Content-Length`；后续 Range 请求仍得真实字节 |
+| `V4-direct-unreachable-and-recovery` | `PlaybackInfo` + `/System/Info/Public` | 停容器期间产品自身报错（非观测器合成），重启后 B-off 冷 / B-on 热均恢复 200 |
+
+配置为产品自身 TOML 的 `matrix_overlap` 组合（`bypass_clients=["GlobalClient"]`、
+`playback_bypass_clients=["PlaybackOnly","OverlapClient"]`、
+`video_bypass_clients=["VideoOnly","OverlapClient"]`、
+`playback_cache_bypass_clients=["CacheOnly"]`），两组仅差 `playback_info_cache_enabled`。
+`throttle` 夹具在补证时被改写为限速目标（保留同一 Item ID），因此取消一定发生在
+传输途中；这是素材操作，不是产品改动。
+
+结果写在 `evidence/supplement-checks.json`（逐项）与 `evidence/supplement-summary.json`
+（汇总、产品 Base、镜像 digest、运行版本、工具身份）。这些记录是真实服务结果，
+不是单元或假上游结果；仍不构成真实客户端（Infuse / Kodi / SenPlayer）兼容结论。

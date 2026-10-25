@@ -45,6 +45,7 @@ from scripts.validation.proxy_runner import (
     proxy_config,
     toml_dumps,
 )
+from scripts.validation import supplement
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -585,3 +586,88 @@ def test_tool_identity_lists_committed_tool_files() -> None:
     identity = tool_identity()
     assert identity["tool_head"]
     assert "scripts/validate_jellyfin_12_3.py" in identity["tool_files_sha256"]
+
+
+# ---------------------------------------------------------------------------
+# S1.1 functional supplement helpers
+# ---------------------------------------------------------------------------
+
+
+def test_supplement_profiles_overlap_is_a_real_product_configuration() -> None:
+    """The supplement must use an existing product matrix, not an invented one."""
+
+    config = proxy_config(
+        upstream_url="http://127.0.0.1:18096",
+        port=18098,
+        profile=supplement.PROFILE,
+        log_dir=Path("/tmp/x"),
+        cache_enabled=False,
+    )
+    parsed = __import__("tomllib").loads(toml_dumps(config))
+    assert "OverlapClient" in parsed["playback_bypass_clients"]
+    assert "OverlapClient" in parsed["video_bypass_clients"]
+    assert "GlobalClient" in parsed["bypass_clients"]
+    assert parsed["playback_info_cache_enabled"] is False
+    assert supplement.GROUP_CACHE == {"B-on": True, "B-off": False}
+
+
+def test_supplement_origin_summary_detects_early_release() -> None:
+    released = supplement._origin_summary(
+        [
+            {"bytes_sent": 32768, "aborted_by_client": True, "finished": False},
+        ],
+        full_size=85112,
+    )
+    assert released["entries"] == 1
+    assert released["any_aborted_by_reader"] is True
+    assert released["released_before_full_size"] is True
+    assert released["max_bytes_sent"] == 32768
+
+    completed = supplement._origin_summary(
+        [
+            {"bytes_sent": 85112, "aborted_by_client": False, "finished": True},
+        ],
+        full_size=85112,
+    )
+    assert completed["any_aborted_by_reader"] is False
+    assert completed["released_before_full_size"] is False
+
+    empty = supplement._origin_summary([], full_size=85112)
+    assert empty["entries"] == 0
+    assert empty["released_before_full_size"] is False
+
+
+def test_supplement_throttle_target_keeps_the_playable_origin_file() -> None:
+    """The slowed fixture must still point at a real origin asset, only slower."""
+
+    assert supplement.THROTTLE_TARGET.startswith("remote-a.mp4?throttle=")
+    rate = int(supplement.THROTTLE_TARGET.split("throttle=")[1])
+    assert rate > 0
+
+
+def test_supplement_digest_helpers_are_stable_and_short() -> None:
+    assert supplement._digest("") is None
+    first = supplement._digest("http://172.17.0.1:18100/remote-a.mp4")
+    assert first == supplement._digest("http://172.17.0.1:18100/remote-a.mp4")
+    assert first != supplement._digest("http://172.17.0.1:18100/remote-b.mp4")
+    assert len(first) == 16
+
+
+def test_supplement_cli_rejects_unknown_group(tmp_path: Path) -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "validation" / "supplement.py"),
+            "--run-dir",
+            str(tmp_path),
+            "--groups",
+            "B-on,Observatory",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+        timeout=300,
+    )
+    combined = completed.stdout + completed.stderr
+    assert completed.returncode != 0
+    assert "Observatory" in combined

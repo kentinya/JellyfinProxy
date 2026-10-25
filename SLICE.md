@@ -13,14 +13,16 @@ HTTP 客户端取证；先复用已有有效结果，仅补实际功能缺口，
 
 - Slice Base：`6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5`。
 - Contract Checkpoint：`eb2775e53f5c26f7c6dd46294e62249e7bb8aa63`。
-- S1.1 Implementation Head：`cfc790e22dc56c2016e09fd49b8e4189ce00a027`（工具与证据，产品未变）；Slice 最终候选仍为 NOT SET。
+- S1.1 Implementation Head：`NOT SET`（本轮补证提交尚未创建；此前工具 Head 为 `cfc790e22dc56c2016e09fd49b8e4189ce00a027`）；Slice 最终候选仍为 NOT SET。
 - 真实 Jellyfin 验证：S1.1 工具输出 82/82 PASS（仅 J / B-on / B-off），独立 B 核对后为
   **FIX REQUIRED**：仅待 V1～V4 功能补证；锁定构建重放等工具修复不再是前置门槛。
+  Developer 已补 V1～V4（真实 12.3、产品直连、18/18 PASS，证据
+  `artifacts/validation-evidence/S1/s1-1-supplement-20261025-01/`），独立 B 重审尚未进行。
   候选 C 对照仍 NOT RUN；A 最终审查：PENDING。
 - 首个 B Task [S1.1 — 真实 12.3 验证基线](Task/S1.1-real-jellyfin-12.3-baseline.md)
-  当前为 **FIX REQUIRED**，当前范围与完整 AC / RO 重评见 Task 的“当前 B 重规划与审查纠正”，入口见根 [TASK](TASK.md)。
+  当前为 **READY FOR B REVIEW**，当前范围与完整 AC / RO 重评见 Task 的“当前 B 重规划与审查纠正”，入口见根 [TASK](TASK.md)。
 - S1.2～S1.4 仍为建议顺序，待 S1.1 获独立 B PASS 后由 B 逐步规划。
 
 ```text
-Next Action: Developer supplements S1.1 V1–V4 functional evidence; B re-review required
+Next Action: B independent re-review of S1.1 V1–V4 evidence
 ```

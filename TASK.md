@@ -9,32 +9,37 @@ Parent Slice 为已激活的 [S1 合同 v4](Task/S1-remove-playback-info-json-ca
 Task ID: S1.1
 Work Type: SLICE TASK
 Parent Slice: S1
-Status: FIX REQUIRED
+Status: READY FOR B REVIEW
 Task Base: 9397dd4864d85ec2ba759ad4b8fa8812cb8b5b31
 Contract Checkpoint: eb2775e53f5c26f7c6dd46294e62249e7bb8aa63
 Plan Checkpoint: eac3245a1bd895d961f8cd522dec68de8935bbec
-Implementation Head: cfc790e22dc56c2016e09fd49b8e4189ce00a027
+Implementation Head: NOT SET — 本轮补证提交尚未创建
 Difficulty: High
 Test Level: T4
 Planner / Reviewer: B
-Independent Review: FIX REQUIRED — functional evidence gaps V1–V4
+Independent Review: PENDING — V1–V4 evidence supplied, re-review required
 ```
 
-Developer 已交付工具、夹具、文档与三组真实基线；工具自报 82/82 不替代独立核对。
-按用户要求已撤销工具建设 / 修复、锁重建和机器报告作为必需门槛，可人工或用短小客户端验证。
-当前 **FIX REQUIRED** 仅因第二已种入 ID 保留、提前取消 / 上游释放、绕过 / ID / raw 边界、
-产品直连不可达 / 恢复仍缺证据，不表示已证实产品缺陷。V1～V4、当前 AC / RO 重评与历史
-审查纠正见完整 Task 的“当前 B 重规划与审查纠正”。已有有效证据继续复用。
+Developer 本轮只补 V1～V4 功能缺口，未改产品、未改版本、未修观测器、未重跑已成立基线。
+新增 `scripts/validation/supplement.py`：产品直连真实 Jellyfin（不经观测器），只用既有
+PlaybackInfo / Video / raw 入口，媒体仅做有界读取，提前取消与上游释放由受控源 socket 账本判定。
 
-B 全回归：174 passed；`doctor` PASS；文档 `prepare --server-lock` 退出 2，后续独立真实矩阵
-当时 BLOCKED，专属资源已清理；当前不要求先修该入口。
-证据：`artifacts/validation-evidence/S1/s1-1-b-review-20261025-01/`。
-S1 保持 ACTIVE，产品未变；C 对照、RO-1～9 最终验收与 A 最终审查未完成，不启动 S1.2。
+真实补证结果 18/18 PASS（`artifacts/validation-evidence/S1/s1-1-supplement-20261025-01/`）：
+V1 第二映射全程保持 302；V2 真实重叠 / 全局绕过、query 覆盖 path、两种 UUID、raw 未种入
+透传与种入后 302；V3 传输中 16384 字节即断开，源账本 `aborted_by_client=true`、
+`bytes_sent=32768 < 85112`，后续 Range 仍得真实 206；V4 产品直连不可达时自身报错，
+重启后三组恢复 200，B-on 的 `HIT` 行按改前缓存遮挡单列。
+
+测试：`tests/test_real_jellyfin_validation.py` 45 passed；全回归 179 passed；
+`git diff --check` PASS；凭据自查 162 文件 0 泄漏；已停止本 run 专属容器。
+
+既有有效证据（12.3.0、三组真实事务、字段差异、本地 Range、同 ID 302→200→302、
+B 全回归 174 passed、`doctor` PASS）继续复用，不整套重跑。真实客户端实机、打包构建、
+候选 C 对照仍 NOT RUN。S1 保持 ACTIVE，A 最终审查未开始，不启动 S1.2。
 
 历史 [BUG-001 — MediaSourceCache 失效映射清理](Task/BUG-001-media-source-cache-invalidation.md)
-已获独立 B PASS，记录继续保留；其历史回归与证据不构成本次 S1 验证结果。
-既有未跟踪 `artifacts/` 保持原样，不纳入本次实现提交。
+已获独立 B PASS，记录继续保留。既有未跟踪 `artifacts/` 保持原样，不纳入实现提交。
 
 ```text
-Next Action: Developer supplements S1.1 V1–V4 functional evidence; B re-review required
+Next Action: B independent re-review of S1.1 V1–V4 evidence
 ```
