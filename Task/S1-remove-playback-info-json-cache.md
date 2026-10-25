@@ -8,16 +8,16 @@
 ```text
 Slice ID: S1
 Owner: A
-Status: ACTIVE
+Status: READY FOR A REVIEW
 Activated On: 2026-10-24
 Contract Revision: 4 — functional acceptance; validation tools optional
 Base SHA: 6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5
 Contract Checkpoint: eb2775e53f5c26f7c6dd46294e62249e7bb8aa63
-Implementation Head: NOT SET
+Implementation Head: a0cc7cddff32da585923c5ff11d3977ea910d87a
 Required Test Level: T4
 Target Upstream: Jellyfin Server 12.3 (official v12.3)
-Real Jellyfin Validation: PARTIAL — S1.4 RR-1 / RR-2 remain
-Independent B Review: FIX REQUIRED — S1.4
+Real Jellyfin Validation: PASS — RJ-01 through RJ-12 / F-08; HTTP only
+Independent B Review: PASS — all four Tasks; final S1.4 re-review
 A Final Review: PENDING
 ```
 
@@ -26,9 +26,9 @@ Contract Checkpoint 已从 Git 解析，并由激活后的纯文档提交补记�
 首个 B Task [S1.1 — 真实 12.3 验证基线](S1.1-real-jellyfin-12.3-baseline.md)已由 Developer 实施并
 交付工具与 J / B-on / B-off 基线；经 RR-1 / RR-2 补证及独立真实重放，当前为 B PASS，
 详见该 Task 文末最终审查。S1.2 缓存撤除与 S1.3 字段配置的本地交付均已获独立 B PASS；
-[S1.4 最终真实验证与交接](S1.4-candidate-real-validation-and-handoff.md)独立 B 审查为
-FIX REQUIRED：保留已成立的字段 / 绕过 / 302 / 失效恢复及 amd64 构建证据，
-补候选认证 / 未知 Item、直连取消与远程媒体停止（RR-1 / RR-2）。A 最终审查 PENDING。
+[S1.4 最终真实验证与交接](S1.4-candidate-real-validation-and-handoff.md#b-final-review-result2026-10-25当前有效)
+最终独立 B PASS；RR-1 / RR-2 已补证并由 B 在新真实 12.3 实例重放，全部 Task 通过。
+Closure Packet 已备，Slice 为 READY FOR A REVIEW；A 最终审查 PENDING。
 激活前已有本会话的根 SLICE / TASK 修改、三份未跟踪方案文档及 `artifacts/`；
 激活时只提交前五份合同相关文档，保留既有证据与用户文件。
 
@@ -263,48 +263,111 @@ B 核对完整 Task 范围、真实输入和原始证据，并独立复现前述
 
 ## Task 索引
 
-以下交付顺序由 A 建议；S1.1 已由 B 发布完整计划，其余仍为建议单元。精确 AC、命令、
-Task Base 与拆分由 B 依据已激活合同与实际结果逐步制定，不提前制造后继 Head。
+以下四个 Task 均由 B 依据真实实现发布计划并独立审查；历史 Base / Head 和历轮记录保留。
 
 | 建议单元 | 完整交付闭环 | 依赖 / 结果映射 | 当前状态 |
 |---|---|---|---|
-| [S1.1 — 真实 12.3 验证基线](S1.1-real-jellyfin-12.3-baseline.md) | 核实真实构建与隔离素材，取得 J、B-on、B-off 功能基线和可复核步骤，明确旧路由限制；工具可选 | 首个 Task；支撑 RO-1～8 的基线，准备 RO-9 对照 | 独立 B PASS；RR-1 / RR-2 补证及独立真实重放完成；C 对照 NOT RUN |
-| [S1.2 — 缓存撤除与保留能力回归](S1.2-remove-playback-info-cache.md) | 原子完成 JSON 缓存撤除、旧配置 / 诊断清理和对应本地回归 | 依赖 S1.1；RO-1～6 | 独立 B PASS；本地 AC-1～8 成立，真实 C 待 S1.4 |
-| [S1.3 — 字段配置与策略闭环](S1.3-playback-info-field-configuration.md) | 完成两个作用域、默认 / 空表、类型校验、绕过、直链一致性和本地验收；最终版本 / 文档交接归 S1.4 | 依赖 S1.2；RO-2～6、8、9；F-01～07 本地，F-08 归 S1.4 | 独立 B PASS；AC-1～9 本地成立，F-08 NOT RUN |
-| [S1.4 — 候选真实验证与交接](S1.4-candidate-real-validation-and-handoff.md) | 默认 / 定制配置执行全部 RJ、F-08、对照差异、适用构建、必要修正与重跑、独立 B 审查及最终 RO 核对 | 依赖 S1.3；RO-1～9 | 独立 B FIX REQUIRED；只补 RR-1 / RR-2，保留有效结果及构建 / 回归 |
+| [S1.1 — 真实 12.3 验证基线](S1.1-real-jellyfin-12.3-baseline.md) | 核实真实构建与隔离素材，取得 J、B-on、B-off 功能基线和可复核步骤，明确旧路由限制；工具可选 | 首个 Task；支撑 RO-1～8 的基线，准备 RO-9 对照 | 独立 B PASS；改前基线及补证完成；当时未跑 C，已由 S1.4 接续 |
+| [S1.2 — 缓存撤除与保留能力回归](S1.2-remove-playback-info-cache.md) | 原子完成 JSON 缓存撤除、旧配置 / 诊断清理和对应本地回归 | 依赖 S1.1；RO-1～6 | 独立 B PASS；本地 AC-1～8 成立，真实 C 后由 S1.4 完成 |
+| [S1.3 — 字段配置与策略闭环](S1.3-playback-info-field-configuration.md) | 完成两个作用域、默认 / 空表、类型校验、绕过、直链一致性和本地验收；最终版本 / 文档交接归 S1.4 | 依赖 S1.2；RO-2～6、8、9；F-01～07 本地，F-08 归 S1.4 | 独立 B PASS；AC-1～9 本地成立；F-08 后由 S1.4 完成 |
+| [S1.4 — 候选真实验证与交接](S1.4-candidate-real-validation-and-handoff.md) | 默认 / 定制配置执行全部 RJ、F-08、对照差异、适用构建、必要修正与重跑、独立 B 审查及最终 RO 核对 | 依赖 S1.3；RO-1～9 | 独立 B PASS；RR-1 / RR-2 已关闭；7 项补证 + 21 项关键路径独立真实重放 |
 
 ## Closure Packet
 
-- Base：`6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5`；Implementation Head：NOT SET。
-- Contract Checkpoint：`eb2775e53f5c26f7c6dd46294e62249e7bb8aa63`；
-  [S1.1 计划](S1.1-real-jellyfin-12.3-baseline.md)的 Plan Checkpoint 为 `eac3245`；
-  S1.1 已审实现 Head 为 `56d76339f2c3fae7cd2ef550cddedc0d9fb73aa5`，产品未变；
-  原工具 Head 为 `cfc790e22dc56c2016e09fd49b8e4189ce00a027`。最新独立 B 决定 PASS，
-  RR-1 / RR-2 与 V3 / V4 已核实并独立真实重放。
-- S1.2 独立 B PASS，实施 Head `74992bbd004a53c0522bb49e5c0229131b00ec88`；S1.3 独立 B PASS，
-  实施 Head `a0cc7cddff32da585923c5ff11d3977ea910d87a`，文档后继 `e903fa9`。
-  S1.3 B 证据：`artifacts/validation-evidence/S1/s1-3-b-review-20261025-01/`，
-  41 项独立聚焦、五组 HTTP 假上游闭环通过，复用相同候选全量 213 passed。
-  S1.4 已由 Developer 交审：Plan Checkpoint `d47a91e`，产品候选仍为 `a0cc7cd`（无需变更），
-  真实验证证据 `artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/`；
-  B 已审至文档检查点 `6b5c825318093ac1f58cd64a854ce944cdd0c8fe`，结论 FIX REQUIRED；
-  B 证据 `artifacts/validation-evidence/S1/s1-4-b-review-20261025-01/`。
-  A 最终审查 PENDING，最终 Implementation Head 仍 NOT SET。
-- 最新全部 RO 重评见 S1.4 B 审查：RO-1～4 / 6 的已交付结果保留；RO-5 / 7 / 8 / 9
-  尚未完整满足。F-01～07 与 F-08 字段 / 绕过 / 302 部分成立，认证 / 未知资源、直连生命周期
-  与默认 / 定制远程媒体停止须补 RR-1 / RR-2。`amd64` 构建与 213 项回归复用，
-  B 独立字段 / 配置 41 passed。局部结果不构成完整真实矩阵或 Slice PASS。
-- 真实 Jellyfin 构建 / 素材 / 配置 / 测试工具身份与原始证据：见 S1.1 报告
-  （`artifacts/validation-evidence/S1/s1-1-baseline-20261025-05/`），补证为
-  `artifacts/validation-evidence/S1/s1-1-supplement-20261025-01/`；原 B 审查证据为
-  `artifacts/validation-evidence/S1/s1-1-b-review-20261025-01/`，前轮重审为
-  `artifacts/validation-evidence/S1/s1-1-b-rereview-20261025-01/`；最终独立复审 / 重放为
-  `artifacts/validation-evidence/S1/s1-1-b-final-review-20261025-01/`，补证 02 保留，C 对照仍 NOT RUN。
-- B-on / B-off / C 已观察差异符合缓存撤除与显式字段合同；不变量未发现产品违规，
-  必需证据缺口见 RR-1 / RR-2。README 既有一行范围差异为非阻塞文档项，保留未暂存。
-- README / AGENTS / CHANGELOG / 版本已核对；未发布 0.9.3 / Unreleased 不变。
-  根状态已协调为 FIX REQUIRED / ACTIVE，完整 Closure Packet 待补证及 B PASS 后整理。
-- 官方版本与接口说明查询：已完成，只作为规划依据，不是运行验证。
+### 固定输入与 Task 索引
+
+- Slice Base：`6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5`。
+- Contract Checkpoint：`eb2775e53f5c26f7c6dd46294e62249e7bb8aa63`；v4 后继只按用户授权调整验证手段，不弱化产品结果。
+- 最终 Implementation Head：`a0cc7cddff32da585923c5ff11d3977ea910d87a`；
+  B 完整复核 Base..Head，文档 / 证据后继审至 `e2e7062821535dbe9280552cf122d6ab221da252`。
+- [S1.1](S1.1-real-jellyfin-12.3-baseline.md)：B PASS；实现 `56d76339f2c3fae7cd2ef550cddedc0d9fb73aa5`；
+  Plan `eac3245a1bd895d961f8cd522dec68de8935bbec`；J / B-on / B-off、最终独立补证 18/18。
+- [S1.2](S1.2-remove-playback-info-cache.md)：B PASS；实现 `74992bbd004a53c0522bb49e5c0229131b00ec88`；
+  Plan `7a69a0311dbd7b4ae792172a780770cd3e06023a`；缓存撤除与本地保留能力完整审查。
+- [S1.3](S1.3-playback-info-field-configuration.md)：B PASS；实现为最终 Head；
+  Plan `e1e4658dc0c993a0722cda232f115e0b7391f72b`；41 项独立聚焦及五组 HTTP 假上游闭环。
+- [S1.4](S1.4-candidate-real-validation-and-handoff.md#b-final-review-result2026-10-25当前有效)：B PASS；
+  Task Base = Head（产品无需修改）；Plan `d47a91e8909594d144c79d4bbd69f5eb87634a43`；
+  新 B 实例归档 75 个文件与补证输入完全相同，7 项补证及 21 项关键路径独立复跑 PASS。
+
+### 证据位置与范围
+
+以下目录均在本工作区 `artifacts/validation-evidence/S1/`，未提交或上传远端；
+A 在此工作区可直接访问，保留至 A 最终决定。私有凭据、Jellyfin 配置 / 数据库不属于分享包。
+不能访问此工作区的审查者须先取得脱敏副本，不能把本机路径写成已完成远端交付。
+
+| 简称 | 目录 / 内容 |
+|---|---|
+| JBO | `s1-1-baseline-20261025-05/`、`s1-1-supplement-20261025-01/`、`s1-1-b-final-review-20261025-01/`；原 01 / 02 补证及历轮失败保留；改前 J / B-on / B-off |
+| L2 | `s1-2-impl-20261025-01/`；本地缓存撤除、错误 / 资源关闭 / LRU 等确定性回归 |
+| L3 | `s1-3-b-review-20261025-01/`；字段 / 配置 41 passed、五组 HTTP 假上游；相同候选全套 213 passed |
+| C0 | [s1-4-candidate-20261025-01](../artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/README.md)；新基线 82/82、八套 C 配置、原始上游账本、字段 / 映射 / 失败恢复、本地播放、日志、构建 / frozen smoke、全套日志；初版标签缺口由 D1 / B1 补足 |
+| D1 | [s1-4-supplement-20261025-01](../artifacts/validation-evidence/S1/s1-4-supplement-20261025-01/README.md)；RR-1 / RR-2 7 项 PASS，三次工具 / 断言失败保留；其长度头文字说明以 B 最终更正和原始 JSON 为准 |
+| B1 | [s1-4-b-final-review-20261025-01](../artifacts/validation-evidence/S1/s1-4-b-final-review-20261025-01/README.md)；新官方 12.3.0 实例、7 项补证 + 21 项关键路径、原始值独立断言、输入对比 / 计时 / 脱敏审计；前轮 `s1-4-b-review-20261025-01/` 保留 |
+
+C0 / D1 / B1 官方镜像摘要相同：
+`sha256:2038fe038ab3876a80f6e7b7e0aef6607b032c7dc0c9b3ad3296d0b2eba3bbb5`。
+各实例 server / Item ID、素材摘要和配置分别在自身 manifest / inventory / logs，不能互换成同一执行。
+
+### 全部 Required Outcomes 重评
+
+| RO | B 最终结论 | 证据与边界 |
+|---|---|---|
+| RO-1 | 满足 | 完整源码差异无 JSON 缓存 / 开关 / 合并 / 替代缓存；L2、C0、B1 串行并发一对一回源，D1 / B1 错误不回放旧成功。 |
+| RO-2 | 满足 | C0 / B1 方法、认证、查询、设备、正文独立；同次上游字段 / 原文、默认与显式规则；L3 两作用域 / 非 JSON 形状。 |
+| RO-3 | 满足 | C0 / B1 默认和定制全部绕过及重叠 / 身份头矩阵；绕过仍种直链，Video 独立，D1 / B1 流式媒体。 |
+| RO-4 | 满足 | L2 / L3 容量 LRU / Id-Path；JBO / C0 / B1 查询优先级、UUID、raw、同 ID 三步及第二映射不重种。 |
+| RO-5 | 满足 | L2 确定性错误 / 非 JSON / 缺媒体源 / 关闭；C0 本地 / 未命中 / outage；D1 / B1 真实认证 / 未知 Item、直连 Range 与提前中断释放 / 再请求，精确长度头保留。 |
+| RO-6 | 满足 | 删除四键 / 环境变量读取及缓存专属诊断；C0 遗留配置、样例、请求 ID / 版本 / 脱敏日志；源码诊断边界保持。 |
+| RO-7 | 满足（HTTP） | 下表 RJ-01～12，真实 12.3 构建与 J / B-on / B-off / C 对照，RR-1 / RR-2 独立关闭；不扩为实机 / CDN。 |
+| RO-8 | B 交付完成；A 待审 | 相同输入全套 213 passed / 5.45 s、amd64 原生构建与默认 / 定制 frozen smoke、文档 / 版本、四 Task 独立 B 与本包；A PASS 尚不存在，故 Slice 未关闭。 |
+| RO-9 | 满足 | L3 F-01～07；C0 字段对照 / Id-Path / 默认样例，D1 / B1 完成默认 / 旧两项 / 单字段真实远程停止重放及本地闭环。 |
+
+### RJ / F 验收与证据映射
+
+| 必需项 | B 结论与对应证据 |
+|---|---|
+| RJ-01 | PASS：JBO / C0 公共信息、媒体列表、元数据图片；B1 新服务版本身份。 |
+| RJ-02 | PASS：C0 / B1 串行 3、并发 4、GET / 两 POST，每次真实上游事务。 |
+| RJ-03 | PASS：C0 / B1 默认 / 空表 / 显式字段；L3 类型、补字段、作用域与非目标字段。 |
+| RJ-04 | PASS：JBO / C0 / B1 两配置绕过、优先级、身份头、原文与直链。 |
+| RJ-05 | PASS：JBO / C0 / B1 两查询名及冲突、path、UUID、Videos 大小写、raw 302 与有界跟随。 |
+| RJ-06 | PASS：JBO / C0 / B1 同实例同 ID 真实刷新三步，第二映射未重种。 |
+| RJ-07 | PASS：C0 本地 / 未命中 / Video bypass；D1 / B1 产品直连 J 的远程 / 本地三个 Range，状态、Content-Range、Content-Length、字节相等。 |
+| RJ-08 | PASS：D1 / B1 产品直连真实 12.3 读 16384 后停止，源 32768 < 85112 释放，后续 / 尾窗正常；源码与 L2 关闭回归。 |
+| RJ-09 | PASS：D1 / B1 两模式 200→401→404→200（同次账本或直连参照）；C0 真上游不可达 200→500→200，不使用观测器合成故障。 |
+| RJ-10 | PASS（边界）：JBO / C0 / B1 旧前缀与 raw 未种入 404；只证明识别 / 透传，12.3 不提供旧端点。 |
+| RJ-11 | PASS：C0 新 / 旧键和环境配置、默认样例、请求 ID / 版本 / 应用访问日志；L3 启动拒绝与两作用域。 |
+| RJ-12 | PASS（HTTP）：C0 本地完整闭环；D1 / B1 默认 / 旧两项 / 单字段远程 302 跟随、真实读取、Range、停止及再次请求；对照差异如下。 |
+| F-01 / 02 | PASS：L3 + C0 / B1 缺省 / 空表同次字段、只改所列字段、显式旧两项。 |
+| F-03 / 04 | PASS：L3 根 / 媒体作用域、混合源、形状、JSON 类型及非法配置启动拒绝；C0 真实远程字段。 |
+| F-05 / 06 | PASS：L3 + C0 / B1 原文绕过与独立 Video；L3 + C0 Id / Path 返回与映射一致、旧 ID 清理。 |
+| F-07 | PASS：L3 并发配置隔离，C0 / B1 请求不复用，D1 / B1 错误透传。 |
+| F-08 | PASS（HTTP）：C0 字段 / 绕过 / 本地播放 + D1 / B1 默认及显式配置远程读、停止、再请求；不承诺配置字段使服务器获得对应转码能力。 |
+
+### 对照差异、不变量与剩余限制
+
+| 方面 | B-on | B-off | C |
+|---|---|---|---|
+| 同项串行三次上游调用 | 1（两次命中） | 3 | 3；并发亦一对一 |
+| 代理 Cache 响应头 / 专属日志 | 存在 | 原分支存在 | 不生成；不额外全局过滤上游同名头 |
+| Protocol / SupportsTranscoding | 固定 File / false | 固定 File / false | 默认保持同次上游；显式旧两项恢复原效果，其他定制只改声明字段 |
+| 旧前缀 / 认证错误 | 缓存可掩盖真实错误 | 回源错误 | 回源实际错误；不增加旧前缀改写或旧成功回退 |
+| Video 映射 / 绕过 / 回退 | 既有行为 | 既有行为 | 保留；字段 Id / Path 按合同驱动最终映射 |
+
+媒体代理走 `forward_stream` / `aiter_raw`，`finally` 与后台关闭释放上游；
+直连原始记录保留 Content-Length，旧观测器路径的无长度 / 缓冲不作为产品直连结论。
+代理不读 STRM、不运行 ffprobe、不操作数据库；测试库刷新仅由隔离 API / 素材驱动。
+应用日志不写认证值、配置正文值或完整敏感 URL；业务播放 URL 不因日志脱敏而改变。
+B1 的 44 份非私有产物扫描实际凭据 0 命中，私有目录 0700 / 凭据 0600，专属进程 / 容器已停止。
+
+无 B 认定的 P0 / P1 遗留。P2：README `client_identified` 覆盖面的一行修正为用户既有未暂存
+修改，保留且未带入提交；不影响产品行为，不自动追加产品 Task。版本仍为未发布 0.9.3 / Unreleased，
+未获发行号授权，不凭本轮升级 / push / 发布 / 部署；AGENTS 无需变更。
+真实 Infuse / Kodi / SenPlayer、arm64 / 第二架构打包 **NOT RUN**；仅有 amd64 原生包及 HTTP
+层证据。受控源释放不等于第三方 CDN 或生产网络表现，不承诺性能 / Jellyfin 探测次数降低。
+D1 校验器 9 PASS / 1 FAIL（本目录无 baseline results）保留，未冒充功能失败或要求工具建设。
+本轮 B 测试含准备 / 清理占比 <50%，计时及保守上限见 B1 `timing.json`；未空等凑比例。
 
 ## 合同修订记录
 
@@ -348,24 +411,25 @@ Task Base 与拆分由 B 依据已激活合同与实际结果逐步制定，不�
   未执行，取消仍经观测器，三套配置远程停止均只读到 302 / 0 字节。仅在原 S1.4 补
   RR-1 / RR-2，保留其他有效结果与原始证据；全部 RO 已重评，合同范围不变。
 
+- 2026-10-25：S1.4 最终独立 B PASS；RR-1 / RR-2 经新官方 12.3 实例 7 项补证与 21 项关键路径重放关闭。
+  更正 Content-Length 和测试阈值事实；全部 RO / RJ / F 重评并整理 Closure Packet，固定最终产品 Head，
+  撤下根实施指针，Slice READY FOR A REVIEW。合同边界未变，A 最终决定仍 PENDING。
+
 ## A Final Review
 
 ```text
 Reviewed Range: NOT SET
 Reviewer / Independence: NOT SET
 Decision: PENDING
-P0 / P1 Blockers: B reports S1.4 RR-1 / RR-2; A assessment remains PENDING
-Closure Reconciliation: PENDING
-Next Action: PENDING — AFTER S1.4 RR-1 / RR-2 AND INDEPENDENT B PASS
+P0 / P1 Blockers: NONE reported by B; A assessment remains PENDING
+Closure Reconciliation: PENDING — packet prepared above
+Next Action: independent A final review of fixed Slice Base..Implementation Head and user outcomes
 ```
 
-当前 S1.1 基线及 S1.2 / S1.3 本地交付均获独立 B PASS；缓存撤除和字段配置已经实现，
-S1.4 候选 C 的真实 12.3 证据已审为 FIX REQUIRED，RR-1 / RR-2 补证前不宣称矩阵 / F-08 完整通过；
-amd64 构建及已成立结果保留，
-版本仍为未发布 0.9.3 检查点，未 push / 发布。
-只有满足上述门槛并获独立 B PASS 与独立 A 最终 PASS 才能关闭 Slice；
-Developer 交付不能替代独立审查，真客户端与 arm64 仍 NOT RUN。
+S1.1～S1.4 均获独立 B PASS，最终产品 Head 与完整证据 / 限制见 Closure Packet。
+Slice 为 READY FOR A REVIEW；只有独立 A 最终 PASS 才能标记 PASS / CLOSED。
+本次 B 状态协调不构成 A 审查或发布，版本仍为未发布 0.9.3，未 push / 发布 / 部署。
 
 ```text
-Next Action: Developer supplements S1.4 RR-1 / RR-2; A final review follows only after independent B PASS
+Next Action: NONE — AUTHORIZED B WORK COMPLETE; awaiting independent A final review
 ```

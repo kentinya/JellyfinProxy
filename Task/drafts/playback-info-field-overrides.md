@@ -5,8 +5,9 @@
 合同 v4 仅调整验证范围与工具门槛，以下字段语义不变；验证方式以当前 Slice / Task 为准。
 本补充随 [Slice S1](../S1-remove-playback-info-json-cache.md) 合同 v3 于 2026-10-24 激活，
 属于规范性必交付范围；本地实现及独立 B 审查已由
-[S1.3](../S1.3-playback-info-field-configuration.md)完成，F-08 真实闭环仍待
-[S1.4](../S1.4-candidate-real-validation-and-handoff.md)。保持 Slice Base 不变，不将未发布检查点冒充发行。
+[S1.3](../S1.3-playback-info-field-configuration.md)完成，F-08 真实 HTTP 闭环已由
+[S1.4](../S1.4-candidate-real-validation-and-handoff.md)完成并独立 B PASS；A 最终审查仍待。
+保持 Slice Base 不变，不将未发布检查点冒充发行。
 
 ## 配置界面
 
@@ -112,9 +113,10 @@ F-08 的值用于证明用户配置优先级，不把改变声明的支持能力
 字段时追加真实证据，结果分开报告。
 
 当前（2026-10-25）：F-01～07 本地实现、配置加载验证、pytest 和 S1.3 独立 B 审查 PASS。
-F-08 已由 S1.4 在候选 C 上用真实 12.3 取得：未配置 / 空表字段与同次上游一致，显式旧两项
-恢复原效果，单字段定制只改所列字段，配置 Id / Path 同时驱动返回字段与 302，并完成原文绕过与
-Video 闭环；证据见 `artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/`。
-上述为 Developer 交付陈述。S1.4 独立 B 已核实字段 / 绕过 / 302 部分，但三套配置的远程停止
-只读到 302 / 0 字节，F-08 完整媒体闭环仍需 RR-2 补证，Task 为 FIX REQUIRED。
-Slice 仍 ACTIVE，A Final Review PENDING；本状态协调不改变任何字段合同。
+F-08 的字段 / 绕过 / Id-Path 与本地播放由 S1.4 原始候选证据支持；首轮 B 发现的远程停止
+缺口 RR-2 已补证，并由 B 在新真实 12.3 实例复跑默认 / 旧两项 / 单字段三套远程读取、停止、
+再次请求，通过完整 HTTP 播放闭环。S1.4 最终独立 B PASS，F-08 **PASS（HTTP 层）**。
+证据分别为 `artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/`、
+`s1-4-supplement-20261025-01/` 和 `s1-4-b-final-review-20261025-01/`（后两者同一父目录）。
+Slice 为 READY FOR A REVIEW；A Final Review PENDING，实机客户端 NOT RUN。
+本状态协调不改变任何字段合同；历轮失实描述及更正见 S1.4 审查记录。

@@ -122,8 +122,11 @@ MediaSource；先删除 STRM 扫描、再写回并扫描，Jellyfin 才会用同
 - C（候选）对照项在 S1.1 标记 `NOT RUN — deferred to a later Slice task`；S1.4 使用本工具重新
   取得 J / B-on / B-off 基线后，以产品自身 `main.py --config` 启动候选 C，由同目录的
   `candidate_driver.py`（单次取证脚本，非产品 CLI）采集 C 分组证据。S1.4 独立 B 审查发现
-  认证 / 未知 Item 未执行、取消仍经观测器、远程停止只读到 302；完整 RJ / F-08 尚未通过，
-  在原 Task 的 RR-1 / RR-2 补证，不要求修复本工具。
+  认证 / 未知 Item 未执行、取消仍经观测器、远程停止只读到 302；当时退回 RR-1 / RR-2。
+  补证与新独立真实重放已完成，S1.4 最终 B PASS；完整 RJ / F-08 的结论须组合原证据与
+  `s1-4-supplement-20261025-01/`、`s1-4-b-final-review-20261025-01/`，不能只依原行数判断。
+  直连 J / C 的 Content-Length 逐值相同，以原始 JSON 和最终 B 更正为准，不采用补证
+  README 的“C chunked / 无长度头”错误说明。无需修复本工具，A 最终审查仍 PENDING。
   该脚本不是通用 `--groups C` 入口，也不修改产品；证据见
   [`s1-4-candidate-20261025-01`](../../artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/README.md)。
 
