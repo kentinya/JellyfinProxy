@@ -7,7 +7,7 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
-## Unreleased
+## 1.0.0 - 2026-10-25
 
 - Removed the complete PlaybackInfo JSON response cache. Every PlaybackInfo request
   is forwarded upstream again, so a repeated or concurrent request for one Item no
@@ -22,8 +22,7 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
   application log records and the `cache` field of `client_identified` logs.
 - Retained PlaybackInfo bypass bodies, direct-URL filling for Video redirects, the
   Video 302 behaviour, media source path invalidation and the streaming proxy
-  fallback. The explicit PlaybackInfo field rules and release version are unchanged
-  in this checkpoint.
+  fallback.
 - PlaybackInfo fields are now configured in TOML and are no longer modified by
   default. The previous automatic `Protocol = "File"` and
   `SupportsTranscoding = false` rewrite for remote media sources is gone; configure

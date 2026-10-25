@@ -1,3 +1,3 @@
 """Single source of truth for the JellyfinProxy release version."""
 
-__version__ = "0.9.3"
+__version__ = "1.0.0"

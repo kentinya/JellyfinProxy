@@ -139,6 +139,10 @@ SupportsDirectPlay = true
 
 ## 版本管理
 
+从 0.9.x 升级到 `v1.0.0` 时，完整 PlaybackInfo JSON 缓存已撤除，远程媒体源不再默认
+改写为 `Protocol="File"` 或禁用转码。需要旧字段效果时，请按上节显式配置；Video 直链映射
+与流式回退仍保留。
+
 JellyfinProxy 遵循语义化版本规范。当前版本统一定义在 `version.py` 中，并会
 显示在启动日志和 `X-JellyfinProxy-Version` 响应头中。不启动服务器也可以查询
 版本：

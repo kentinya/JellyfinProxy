@@ -12,7 +12,9 @@
 
 A 证据：`artifacts/validation-evidence/S1/s1-a-final-review-20261025-01/`，本工作区可访问。
 真实客户端与 arm64 / 第二架构 **NOT RUN**。已知验证工具限制及 README 一行用户改动作为非阻塞项保留。
-版本仍为 0.9.3 / Unreleased，未 push / 发布 / 部署，未启动后续工作。
+S1 原审查时版本为 0.9.3 / Unreleased，收尾提交随后已按用户要求推送 GitHub。
+2026-10-25 用户另指定整理 `v1.0.0` 版本提交与本地标签；程序版本改为 `1.0.0`，
+不改变已关闭 S1 的合同和原审查范围，尚未发布 GitHub Release 或部署。
 
 ```text
 Next Action: NONE — AUTHORIZED WORK COMPLETE

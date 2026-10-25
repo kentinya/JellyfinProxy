@@ -26,14 +26,14 @@ Python 版本为 3.11；每个架构都运行全部 pytest 回归，以及冻结
 4. 按当前机器架构本地验证打包，例如：
 
    ```bash
-   .venv/bin/python scripts/build_release.py --tag v0.9.2 --arch amd64
+   .venv/bin/python scripts/build_release.py --tag v1.0.0 --arch amd64
    ```
 
 5. 提交并推送明确属于发布的文件，然后对该提交创建与 `version.py` 一致的标签：
 
    ```bash
-   git tag v0.9.2 <完整发布提交SHA>
-   git push origin refs/tags/v0.9.2
+   git tag v1.0.0 <完整发布提交SHA>
+   git push origin refs/tags/v1.0.0
    ```
 
 6. 检查 `Build and Publish Release` 工作流成功，核对 Release 页面上两个压缩包和
