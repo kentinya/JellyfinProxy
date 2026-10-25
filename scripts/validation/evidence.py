@@ -92,17 +92,42 @@ def verify(paths: RunPaths, *, expected_cases: Sequence[str] | None = None) -> E
     # -- identity -------------------------------------------------------
     tool = manifest.get("tool") or {}
     head = tool.get("tool_head")
-    try:
-        current_head = git_rev("HEAD")
-    except ValidationError:
-        current_head = None
     if not head:
         report.add("tool_head_recorded", "FAIL", "manifest has no tool_head")
     else:
+        # The decisive identity is the tool sources themselves, not the branch head:
+        # documentation successors advance HEAD without changing any executed input.
+        from scripts.validation.common import sha256_file
+        from scripts.validation.environment import repo_root
+
+        recorded_files = tool.get("tool_files_sha256") or {}
+        current_files = {
+            relative: sha256_file(repo_root() / relative)
+            for relative in recorded_files
+            if (repo_root() / relative).is_file()
+        }
+        changed = sorted(
+            relative
+            for relative, digest in recorded_files.items()
+            if current_files.get(relative) != digest
+        )
+        try:
+            current_head = git_rev("HEAD")
+        except ValidationError:
+            current_head = None
+        report.add(
+            "tool_sources_unchanged",
+            "PASS" if not changed else "FAIL",
+            {"files": len(recorded_files), "changed": changed},
+        )
         report.add(
             "tool_head_recorded",
             "PASS" if current_head == head else "WARN",
-            {"recorded": head, "current": current_head},
+            {
+                "recorded": head,
+                "current": current_head,
+                "note": "HEAD may advance with documentation-only successors; tool sources above are authoritative",
+            },
         )
 
     base = manifest.get("product_base") or {}
