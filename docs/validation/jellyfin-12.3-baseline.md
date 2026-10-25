@@ -6,7 +6,7 @@
 - 合同要求固定 **Jellyfin Server 12.3**；其他版本、`latest` 或网页版本号一律拒绝。
 - 对照组：`J`（直连 12.3，经透明观测入口）、`B-on`（固定 Slice Base，原默认缓存开启）、
   `B-off`（同一 Base，仅关闭 JSON 缓存）。三者使用同一服务器、同一素材、同一客户端策略。
-- 当前证据：[`artifacts/validation-evidence/S1/s1-1-baseline-20261025-04`](../../artifacts/validation-evidence/S1/s1-1-baseline-20261025-04)。
+- 当前证据：[`artifacts/validation-evidence/S1/s1-1-baseline-20261025-05`](../../artifacts/validation-evidence/S1/s1-1-baseline-20261025-05)。
 
 ## 1. 前置条件
 
@@ -135,7 +135,7 @@ MediaSource；先删除 STRM 扫描、再写回并扫描，Jellyfin 才会用同
 - 复现他人证据：
 
 ```bash
-SRC=artifacts/validation-evidence/S1/s1-1-baseline-20261025-04
+SRC=artifacts/validation-evidence/S1/s1-1-baseline-20261025-05
 NEW=artifacts/validation-evidence/S1/s1-1-b-lock-replay
 .venv/bin/python scripts/validate_jellyfin_12_3.py prepare  --run-dir "$NEW" --server-lock "$SRC/server.lock.json"
 .venv/bin/python scripts/validate_jellyfin_12_3.py baseline --run-dir "$NEW" --cases RJ-02,RJ-04,RJ-05
