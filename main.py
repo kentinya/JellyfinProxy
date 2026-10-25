@@ -20,8 +20,8 @@ from infrastructure.logging import bind_request_id, configure_logging, log_acces
 from policies.client_policy import ClientPolicy
 from routers.router import Router
 from services.media_resolver import MediaResolver
-from services.media_source_service import MediaSourceService, ProtocolFileRule
-from services.playback_service import PlaybackService
+from services.media_source_service import MediaSourceService
+from services.playback_service import PlaybackFieldOverrides, PlaybackService
 from version import __version__
 
 
@@ -50,7 +50,11 @@ def create_app(settings: Settings) -> FastAPI:
             ),
             http_client=http_client,
             playback_service=PlaybackService(
-                MediaSourceService(MediaResolver(), rules=(ProtocolFileRule(),))
+                MediaSourceService(MediaResolver()),
+                field_overrides=PlaybackFieldOverrides(
+                    response_fields=settings.playback_info_response_fields,
+                    media_source_fields=settings.playback_info_media_source_fields,
+                ),
             ),
         )
         logger.info(

@@ -97,6 +97,46 @@ SenPlayer 使用的无 `/emby` 前缀 `/api/danmu/{id}/raw` 也采用相同处�
 透明代理响应采用异步流式传输，不会把完整视频加载到内存；Range、Content-Range、
 Content-Length 和 Content-Encoding 等媒体响应头会原样保留。
 
+## 按字段修改 PlaybackInfo
+
+代理默认不修改 PlaybackInfo 的字段：Jellyfin 返回什么就返回什么。旧版本曾固定把
+远程媒体源的 `Protocol` 改为 `File` 并把 `SupportsTranscoding` 置为 `false`，
+该自动修改已取消。需要同样效果时必须显式配置：
+
+```toml
+[playback_info.response_fields]
+ServerName = "Home Jellyfin"
+
+[playback_info.media_source_fields]
+Protocol = "File"
+SupportsTranscoding = false
+SupportsDirectPlay = true
+```
+
+作用域与规则：
+
+- `playback_info.response_fields` 作用于 PlaybackInfo 响应根对象的直接字段；
+  `playback_info.media_source_fields` 作用于 `MediaSources` 数组中每个可用 HTTP(S)
+  媒体源的直接字段。`MediaStreams` 等嵌套对象不在范围内，也不支持点路径、数组下标
+  或模板。
+- 两个表缺省或为空时都不修改任何字段；只有显式列出的字段才会被覆盖，未列出的字段
+  一律保持 Jellyfin 的返回值。已存在字段被替换，缺少字段被补入。
+- 值保持 TOML 的原类型：字符串、布尔、整数、有限小数、数组和对象。数组 / 对象整体
+  替换该字段，不做深层合并。代理不按字段名推测类型，因此请按 Jellyfin JSON 的类型
+  填写（例如布尔值写成 `false` 而不是 `"false"`）。
+- 字段名与 Jellyfin JSON 一致且区分大小写。`response_fields` 不能覆盖 `MediaSources`
+  容器；媒体源字段统一通过 `media_source_fields` 配置。
+- 媒体源字段覆盖只作用于 Path 是可用 HTTP(S) 地址的媒体源。本地路径、缺失或无效
+  Path 的媒体源不会被修改，仍按既有逻辑透传并清理其直链。
+- 覆盖后的最终 `Id` / `Path` 用于 Video 重定向：配置改变 `Id` 时，旧 ID 的直链映射会
+  被清理，其他 ID 不受影响。
+- 该配置在启动时读取，修改后需要重启；没有热更新，也不提供对应环境变量。
+- 类型或结构非法（例如 `NaN` / `Infinity`、TOML 日期 / 时间、空字段名、非表的
+  `playback_info`）会在启动时报错，错误信息只包含配置位置和类型，不打印配置值。
+
+该配置只改变 PlaybackInfo 响应中的字段值，不代表 Jellyfin 或客户端因此真正支持某种
+播放 / 转码方式。
+
 ## 版本管理
 
 JellyfinProxy 遵循语义化版本规范。当前版本统一定义在 `version.py` 中，并会

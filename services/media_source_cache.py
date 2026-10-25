@@ -48,3 +48,10 @@ class MediaSourceCache:
         if path is not None:
             self._paths.move_to_end(cache_key)
         return path
+
+    def forget(self, media_source_id: object) -> None:
+        """Drop the known URL of exactly one MediaSourceId, if any."""
+
+        if not isinstance(media_source_id, str) or not media_source_id:
+            return
+        self._paths.pop(_normalize_media_source_id(media_source_id), None)

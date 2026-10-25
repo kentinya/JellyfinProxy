@@ -24,6 +24,16 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
   Video 302 behaviour, media source path invalidation and the streaming proxy
   fallback. The explicit PlaybackInfo field rules and release version are unchanged
   in this checkpoint.
+- PlaybackInfo fields are now configured in TOML and are no longer modified by
+  default. The previous automatic `Protocol = "File"` and
+  `SupportsTranscoding = false` rewrite for remote media sources is gone; configure
+  `[playback_info.media_source_fields]` with those two values to restore it. Both
+  `[playback_info.response_fields]` and `[playback_info.media_source_fields]` are
+  optional and only listed fields are overwritten, so an existing configuration
+  without these tables now receives Jellyfin's original field values. Values keep
+  their TOML type, arrays and objects replace the whole field, and configurable
+  values are validated at startup. The shipped sample configuration does not
+  enable any override.
 
 ## 0.9.3 - 2026-10-24
 

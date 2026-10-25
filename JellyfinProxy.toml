@@ -12,3 +12,20 @@ request_timeout_seconds = 60
 log_level = "INFO"
 log_file = "JellyfinProxy.log"
 access_log_file = "access.log"
+
+# 以下两个可选表必须放在所有根配置之后，否则其后的根字段会被 TOML 归入这些表。
+# 两表缺省或留空时都不修改任何 PlaybackInfo 字段；只有列出的字段才会被覆盖，
+# 修改后需重启服务生效。以下全部为注释示例，默认不启用任何字段覆盖。
+
+# 覆盖 PlaybackInfo 响应根对象的直接字段。
+# 不允许在此覆盖 MediaSources 容器，媒体源字段请使用 media_source_fields。
+[playback_info.response_fields]
+# ServerName = "Home Jellyfin"
+
+# 覆盖每个可用 HTTP(S) 媒体源的直接字段；本地或无效 Path 的媒体源不受影响。
+# 数组 / 对象值整体替换，不做深层合并。
+[playback_info.media_source_fields]
+# 恢复 0.9.3 及更早版本的默认效果：
+# Protocol = "File"
+# SupportsTranscoding = false
+# SupportsDirectPlay = true

@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+from dataclasses import dataclass, field
+from datetime import date, datetime, time as datetime_time
+import math
 import os
-import sys
-from dataclasses import dataclass
 from pathlib import Path
+import sys
 import tomllib
 from typing import Any
+
+
+RESERVED_RESPONSE_FIELD = "MediaSources"
 
 
 def _as_bool(value: str) -> bool:
@@ -40,6 +46,106 @@ def _client_list(values: dict[str, Any], name: str) -> tuple[str, ...]:
     return _configured_list(value)
 
 
+def _type_name(value: Any) -> str:
+    """Describe a configured value type without exposing the value itself."""
+
+    if isinstance(value, datetime):
+        return "datetime"
+    if isinstance(value, date):
+        return "date"
+    if isinstance(value, datetime_time):
+        return "time"
+    if value is None:
+        return "null"
+    return type(value).__name__
+
+
+def _validate_field_value(value: Any, location: str) -> None:
+    """Accept only values that a standard JSON encoder can represent."""
+
+    value_type = type(value)
+    if value_type in (str, bool, int):
+        return
+    if value_type is float:
+        if not math.isfinite(value):
+            raise ValueError(
+                f"Invalid configuration at {location}: unsupported non-finite number"
+            )
+        return
+    if value_type is list:
+        for index, item in enumerate(value):
+            _validate_field_value(item, f"{location}[{index}]")
+        return
+    if value_type is dict:
+        for key, item in value.items():
+            if not isinstance(key, str) or key == "":
+                raise ValueError(
+                    f"Invalid configuration at {location}: empty field name"
+                )
+            _validate_field_value(item, f"{location}.{key}")
+        return
+    raise ValueError(
+        f"Invalid configuration at {location}: unsupported type {_type_name(value)}"
+    )
+
+
+def _field_overrides(
+    value: Any,
+    location: str,
+    *,
+    allow_media_sources: bool,
+) -> dict[str, Any]:
+    """Validate one optional field table and return an independent copy."""
+
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(
+            f"Invalid configuration at {location}: expected a table, "
+            f"found {_type_name(value)}"
+        )
+
+    overrides: dict[str, Any] = {}
+    for name, field_value in value.items():
+        if not isinstance(name, str) or name == "":
+            raise ValueError(f"Invalid configuration at {location}: empty field name")
+        if not allow_media_sources and name == RESERVED_RESPONSE_FIELD:
+            raise ValueError(
+                f"Invalid configuration at {location}.{name}: reserved field name; "
+                "use playback_info.media_source_fields for media sources"
+            )
+        _validate_field_value(field_value, f"{location}.{name}")
+        overrides[name] = deepcopy(field_value)
+    return overrides
+
+
+def _playback_info_fields(
+    values: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Read the two optional PlaybackInfo field tables from a TOML document."""
+
+    playback_info = values.get("playback_info")
+    if playback_info is None:
+        return {}, {}
+    if not isinstance(playback_info, dict):
+        raise ValueError(
+            "Invalid configuration at playback_info: expected a table, "
+            f"found {_type_name(playback_info)}"
+        )
+    return (
+        _field_overrides(
+            playback_info.get("response_fields"),
+            "playback_info.response_fields",
+            allow_media_sources=False,
+        ),
+        _field_overrides(
+            playback_info.get("media_source_fields"),
+            "playback_info.media_source_fields",
+            allow_media_sources=True,
+        ),
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     jellyfin_url: str
@@ -53,6 +159,8 @@ class Settings:
     log_level: str
     log_file: str
     access_log_file: str
+    playback_info_response_fields: dict[str, Any] = field(default_factory=dict)
+    playback_info_media_source_fields: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -68,6 +176,8 @@ class Settings:
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             log_file=os.getenv("LOG_FILE", "JellyfinProxy.log"),
             access_log_file=os.getenv("ACCESS_LOG_FILE", "access.log"),
+            playback_info_response_fields={},
+            playback_info_media_source_fields={},
         )
 
     @classmethod
@@ -107,6 +217,8 @@ class Settings:
         if bypass_value is None:
             bypass_value = values.get("bypass_clients", ["Infuse", "Kodi"])
 
+        response_fields, media_source_fields = _playback_info_fields(values)
+
         return cls(
             jellyfin_url=os.getenv(
                 "JELLYFIN_URL", str(values.get("jellyfin_url", "http://127.0.0.1:8096"))
@@ -126,6 +238,8 @@ class Settings:
             log_level=os.getenv("LOG_LEVEL", str(values.get("log_level", "INFO"))),
             log_file=resolved_log_file,
             access_log_file=resolved_access_log_file,
+            playback_info_response_fields=response_fields,
+            playback_info_media_source_fields=media_source_fields,
         )
 
 

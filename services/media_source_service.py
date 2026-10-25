@@ -62,6 +62,12 @@ class MediaSourceService:
         self._resolver = resolver
         self._rules = tuple(rules)
 
+    @property
+    def rules(self) -> tuple[MediaSourceRule, ...]:
+        """The configured policy rules, empty when only passthrough applies."""
+
+        return self._rules
+
     def decide(self, source: Mapping[str, Any]) -> MediaSourceDecision:
         media_url = self._resolver.analyze(source.get("Path"))
         if media_url is None:
@@ -73,3 +79,8 @@ class MediaSourceService:
                 return decision
 
         return MediaSourceDecision(MediaSourceAction.PASSTHROUGH, media_url.url)
+
+    def is_usable_remote(self, media_path: object) -> bool:
+        """Report whether the given existing Path is a usable HTTP(S) URL."""
+
+        return self._resolver.analyze(media_path) is not None

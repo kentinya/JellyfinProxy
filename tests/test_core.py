@@ -27,7 +27,7 @@ from services.media_source_service import (
     MediaSourceService,
     ProtocolFileRule,
 )
-from services.playback_service import PlaybackService
+from services.playback_service import PlaybackFieldOverrides, PlaybackService
 
 
 class RewriteRule:
@@ -438,7 +438,7 @@ def test_create_app_forwards_playback_and_emby_playback_to_upstream_each_time() 
         assert response.headers["x-request-id"]
 
 
-def _app_with_fake_upstream(handler) -> tuple[object, object]:
+def _app_with_fake_upstream(handler, **settings_overrides) -> tuple[object, object]:
     """Build the real app with a stub HTTP client class supplied by the test."""
 
     class MediaStream(httpx.AsyncByteStream):
@@ -467,7 +467,12 @@ def _app_with_fake_upstream(handler) -> tuple[object, object]:
         async def close(self) -> None:
             pass
 
-    settings = replace(Settings.from_env(), log_file="", access_log_file="")
+    settings = replace(
+        Settings.from_env(),
+        log_file="",
+        access_log_file="",
+        **settings_overrides,
+    )
     patcher = patch.object(main_module, "JellyfinHttpClient", StubClient)
     patcher.start()
     return main_module.create_app(settings), patcher
@@ -576,9 +581,11 @@ def test_create_app_bypass_forwards_original_body_and_fills_video_redirect() -> 
             assert "location" not in streamed.headers
 
             # A client without the bypass gets the modified document instead.
+            # The default assembly changes no field: Jellyfin's values survive.
             modified = client.post("/Items/item-id/PlaybackInfo")
             document = json.loads(modified.content)
-            assert document["MediaSources"][0]["Protocol"] == "File"
+            assert document["MediaSources"][0]["Protocol"] == "Http"
+            assert document["MediaSources"][0]["SupportsTranscoding"] is True
 
             # An upstream failure surfaces as-is; no earlier success is replayed.
             state.update(status=401, body=b'{"error":"denied"}')
@@ -1169,3 +1176,514 @@ def test_proxy_handler_streams_and_closes_upstream_response() -> None:
     assert response.headers["content-range"] == "bytes 0-3/100"
     assert body == b"abcd"
     assert stream.closed
+
+
+# --- PlaybackInfo field configuration -------------------------------------
+
+
+REMOTE_SOURCE = {
+    "Id": "source-id",
+    "Path": "https://media.example/movie.mkv",
+    "Protocol": "Http",
+    "EncoderProtocol": "Hls",
+    "SupportsDirectPlay": True,
+    "SupportsTranscoding": True,
+    "MediaStreams": [{"Codec": "hevc"}],
+    "ETag": "etag-value",
+}
+
+
+def playback_service_with_fields(**overrides) -> PlaybackService:
+    return PlaybackService(
+        MediaSourceService(MediaResolver()),
+        field_overrides=PlaybackFieldOverrides(**overrides),
+    )
+
+
+def test_default_playback_fields_change_nothing() -> None:
+    document = {
+        "ServerName": "Upstream",
+        "MediaSources": [REMOTE_SOURCE.copy(), {"Id": "local-id", "Path": "/media/movie.mkv"}],
+    }
+
+    result = asyncio.run(PlaybackService(MediaSourceService(MediaResolver())).modify(document))
+
+    assert result == {
+        "ServerName": "Upstream",
+        "MediaSources": [REMOTE_SOURCE, {"Id": "local-id", "Path": "/media/movie.mkv"}],
+    }
+    assert result["MediaSources"][0]["Protocol"] == "Http"
+    assert result["MediaSources"][0]["SupportsTranscoding"] is True
+
+
+def test_explicit_legacy_fields_restore_previous_default_rule() -> None:
+    document = {"MediaSources": [REMOTE_SOURCE.copy()]}
+    service = playback_service_with_fields(
+        media_source_fields={"Protocol": "File", "SupportsTranscoding": False},
+    )
+
+    source = asyncio.run(service.modify(document))["MediaSources"][0]
+
+    assert source["Protocol"] == "File"
+    assert source["SupportsTranscoding"] is False
+    assert source["Path"] == REMOTE_SOURCE["Path"]
+    assert source["EncoderProtocol"] == "Hls"
+    assert source["SupportsDirectPlay"] is True
+    assert source["MediaStreams"] == [{"Codec": "hevc"}]
+    assert source["ETag"] == "etag-value"
+    assert source["Id"] == "source-id"
+
+
+def test_single_field_override_does_not_trigger_other_fields() -> None:
+    document = {"MediaSources": [REMOTE_SOURCE.copy()]}
+    service = playback_service_with_fields(media_source_fields={"SupportsDirectPlay": False})
+
+    source = asyncio.run(service.modify(document))["MediaSources"][0]
+
+    assert source["SupportsDirectPlay"] is False
+    assert source["Protocol"] == "Http"
+    assert source["SupportsTranscoding"] is True
+
+
+def test_root_field_override_scope_is_the_response_root_only() -> None:
+    document = {
+        "ServerName": "Upstream",
+        "MediaSources": [REMOTE_SOURCE.copy()],
+    }
+    service = playback_service_with_fields(
+        response_fields={"ServerName": "Proxy", "AddedRootField": [1, 2]},
+    )
+
+    result = asyncio.run(service.modify(document))
+
+    assert result["ServerName"] == "Proxy"
+    assert result["AddedRootField"] == [1, 2]
+    # Root overrides never reach the media source objects.
+    assert result["MediaSources"][0] == REMOTE_SOURCE
+
+
+def test_media_source_fields_only_apply_to_usable_remote_sources() -> None:
+    document = {"MediaSources": [
+        REMOTE_SOURCE.copy(),
+        {"Id": "local-id", "Path": "/media/movie.mkv", "Protocol": "File"},
+        {"Id": "missing-path-id", "Protocol": "Http"},
+        {"Id": "ftp-id", "Path": "ftp://media.example/movie.mkv"},
+        "not-an-object",
+    ]}
+    service = playback_service_with_fields(
+        media_source_fields={"Protocol": "File", "SupportsTranscoding": False},
+    )
+
+    sources = asyncio.run(service.modify(document))["MediaSources"]
+
+    assert sources[0]["Protocol"] == "File"
+    assert sources[0]["SupportsTranscoding"] is False
+    assert sources[1] == {"Id": "local-id", "Path": "/media/movie.mkv", "Protocol": "File"}
+    assert sources[2] == {"Id": "missing-path-id", "Protocol": "Http"}
+    assert sources[3] == {"Id": "ftp-id", "Path": "ftp://media.example/movie.mkv"}
+    assert sources[4] == "not-an-object"
+    assert service.media_source_cache.get("local-id") is None
+    assert service.media_source_cache.get("missing-path-id") is None
+
+
+def test_complex_field_values_replace_whole_field_and_keep_types() -> None:
+    document = {"MediaSources": [{
+        "Id": "source-id",
+        "Path": "https://media.example/movie.mkv",
+        "MediaStreams": [{"Codec": "hevc"}, {"Codec": "aac"}],
+        "Tags": ["upstream"],
+    }]}
+    service = playback_service_with_fields(media_source_fields={
+        "MediaStreams": [{"Codec": "h264"}],
+        "Tags": ["proxy", "field"],
+        "SupportsDirectPlay": "false",
+        "Fraction": 1.5,
+        "Whole": 7,
+    })
+
+    source = asyncio.run(service.modify(document))["MediaSources"][0]
+
+    # Arrays and objects are replaced wholesale, not merged.
+    assert source["MediaStreams"] == [{"Codec": "h264"}]
+    assert source["Tags"] == ["proxy", "field"]
+    # Values keep their configured TOML type instead of following the field name.
+    assert source["SupportsDirectPlay"] == "false"
+    assert source["Fraction"] == 1.5
+    assert source["Whole"] == 7
+
+
+def test_configured_rule_extension_still_runs_without_implicit_rule() -> None:
+    document = {"MediaSources": [{
+        **REMOTE_SOURCE,
+        "Path": "https://alist.example.com/movie/test.mkv",
+    }]}
+    service = PlaybackService(
+        MediaSourceService(MediaResolver(), rules=(RewriteRule(),)),
+        field_overrides=PlaybackFieldOverrides(),
+    )
+
+    source = asyncio.run(service.modify(document))["MediaSources"][0]
+
+    assert source["Path"] == "https://cdn.example.com/movie/test.mkv"
+    assert source["Protocol"] == "Http"
+
+
+def test_explicit_media_source_fields_win_over_policy_rule_values() -> None:
+    document = {"MediaSources": [REMOTE_SOURCE.copy()]}
+    service = PlaybackService(
+        MediaSourceService(MediaResolver(), rules=(ProtocolFileRule(),)),
+        field_overrides=PlaybackFieldOverrides(
+            media_source_fields={"Protocol": "Http", "SupportsDirectPlay": False},
+        ),
+    )
+
+    source = asyncio.run(service.modify(document))["MediaSources"][0]
+
+    # The policy rule ran (it set SupportsTranscoding), then the explicit value won.
+    assert source["Protocol"] == "Http"
+    assert source["SupportsDirectPlay"] is False
+    assert source["SupportsTranscoding"] is False
+
+
+def test_mutable_field_values_are_isolated_per_source_and_per_request() -> None:
+    template = {"MediaSources": [
+        {"Id": "source-a", "Path": "https://media.example/a.mkv"},
+        {"Id": "source-b", "Path": "https://media.example/b.mkv"},
+    ]}
+    service = playback_service_with_fields(
+        media_source_fields={"Tags": ["shared"], "Details": {"nested": [1]}},
+    )
+
+    first = asyncio.run(service.modify(json.loads(json.dumps(template))))
+    first_sources = first["MediaSources"]
+    first_sources[0]["Tags"].append("mutated-a")
+    first_sources[0]["Details"]["nested"].append(2)
+
+    assert first_sources[1]["Tags"] == ["shared"]
+    assert first_sources[1]["Details"] == {"nested": [1]}
+
+    second = asyncio.run(service.modify(json.loads(json.dumps(template))))
+    assert second["MediaSources"][0]["Tags"] == ["shared"]
+    assert second["MediaSources"][0]["Details"] == {"nested": [1]}
+
+
+def test_overridden_media_source_id_drives_video_redirect_and_clears_old_id() -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-id", "https://media.example/stale.mkv")
+    cache.remember("other-id", "https://media.example/other.mkv")
+    service = PlaybackService(
+        MediaSourceService(MediaResolver()),
+        cache,
+        PlaybackFieldOverrides(media_source_fields={"Id": "new-source-id"}),
+    )
+    document = {"MediaSources": [REMOTE_SOURCE.copy()]}
+
+    source = asyncio.run(service.modify(document))["MediaSources"][0]
+
+    assert source["Id"] == "new-source-id"
+    assert cache.get("source-id") is None
+    assert cache.get("new-source-id") == REMOTE_SOURCE["Path"]
+    assert cache.get("other-id") == "https://media.example/other.mkv"
+
+    class UnexpectedProxy:
+        async def handle(self, request: Request) -> Response:
+            pytest.fail("Video should redirect through the final media source Id")
+
+    redirect = asyncio.run(VideoHandler(UnexpectedProxy(), cache).handle(  # type: ignore[arg-type]
+        Request({
+            "type": "http", "method": "GET", "scheme": "http",
+            "server": ("proxy", 8097), "path": "/Videos/new-source-id/stream.mkv",
+            "query_string": b"", "headers": [],
+        }),
+    ))
+    assert redirect.status_code == 302
+    assert redirect.headers["location"] == REMOTE_SOURCE["Path"]
+
+
+def test_overridden_invalid_path_clears_only_the_matching_mapping() -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-id", "https://media.example/stale.mkv")
+    cache.remember("other-id", "https://media.example/other.mkv")
+    service = PlaybackService(
+        MediaSourceService(MediaResolver()),
+        cache,
+        PlaybackFieldOverrides(media_source_fields={"Path": "/media/local.mkv"}),
+    )
+
+    source = asyncio.run(service.modify({"MediaSources": [REMOTE_SOURCE.copy()]}))["MediaSources"][0]
+
+    assert source["Path"] == "/media/local.mkv"
+    assert cache.get("source-id") is None
+    assert cache.get("other-id") == "https://media.example/other.mkv"
+
+
+@pytest.mark.parametrize("document", [
+    pytest.param([{"ServerName": "Upstream"}], id="non-object-root"),
+    pytest.param({"ServerName": "Upstream"}, id="missing-media-sources"),
+    pytest.param({"MediaSources": "oops"}, id="non-list-media-sources"),
+    pytest.param({"MediaSources": {"Id": "source-id"}}, id="non-list-media-source-object"),
+])
+def test_field_overrides_tolerate_unexpected_document_shapes(document) -> None:
+    service = playback_service_with_fields(
+        response_fields={"ServerName": "Proxy"},
+        media_source_fields={"Protocol": "File"},
+    )
+
+    result = asyncio.run(service.modify(document))
+
+    if isinstance(document, list):
+        assert result == document
+    else:
+        assert result["ServerName"] == "Proxy"
+        # No MediaSources list is created or converted.
+        assert result.get("MediaSources") == document.get("MediaSources")
+        assert ("MediaSources" in result) == ("MediaSources" in document)
+
+
+def test_create_app_default_assembly_changes_no_playback_field() -> None:
+    def upstream(request: Request, transaction: int) -> httpx.Response:
+        del request, transaction
+        return httpx.Response(
+            200,
+            json={"ServerName": "Upstream", "MediaSources": [REMOTE_SOURCE.copy()]},
+        )
+
+    app, patcher = _app_with_fake_upstream(upstream)
+    try:
+        with TestClient(app) as client:
+            # The assembly keeps the rule extension point but installs no
+            # implicit field-modifying rule.
+            assert app.state.dispatcher._playback._service._media_source_service.rules == ()
+            response = client.post("/Items/item-id/PlaybackInfo")
+            document = json.loads(response.content)
+
+            assert document["ServerName"] == "Upstream"
+            assert document["MediaSources"][0] == REMOTE_SOURCE
+            assert document["MediaSources"][0]["Protocol"] == "Http"
+            assert document["MediaSources"][0]["SupportsTranscoding"] is True
+
+            redirect = client.get(
+                "/Videos/item-id/stream.mkv",
+                params={"MediaSourceId": "source-id"},
+                follow_redirects=False,
+            )
+            assert redirect.status_code == 302
+            assert redirect.headers["location"] == REMOTE_SOURCE["Path"]
+    finally:
+        patcher.stop()
+
+
+def test_create_app_explicit_field_configuration_changes_only_listed_fields() -> None:
+    def upstream(request: Request, transaction: int) -> httpx.Response:
+        del request, transaction
+        return httpx.Response(
+            200,
+            json={"ServerName": "Upstream", "MediaSources": [REMOTE_SOURCE.copy()]},
+        )
+
+    app, patcher = _app_with_fake_upstream(
+        upstream,
+        playback_info_response_fields={"ServerName": "Proxy"},
+        playback_info_media_source_fields={
+            "Protocol": "File",
+            "SupportsTranscoding": False,
+        },
+    )
+    try:
+        with TestClient(app) as client:
+            document = json.loads(client.post("/Items/item-id/PlaybackInfo").content)
+            source = document["MediaSources"][0]
+
+            assert document["ServerName"] == "Proxy"
+            assert source["Protocol"] == "File"
+            assert source["SupportsTranscoding"] is False
+            assert source["SupportsDirectPlay"] is True
+            assert source["EncoderProtocol"] == "Hls"
+            assert source["MediaStreams"] == [{"Codec": "hevc"}]
+            assert source["Id"] == "source-id"
+            assert source["Path"] == REMOTE_SOURCE["Path"]
+
+            redirect = client.get(
+                "/Videos/item-id/stream.mkv",
+                params={"MediaSourceId": "source-id"},
+                follow_redirects=False,
+            )
+            assert redirect.status_code == 302
+            assert redirect.headers["location"] == REMOTE_SOURCE["Path"]
+    finally:
+        patcher.stop()
+
+
+def test_create_app_playback_bypass_skips_overrides_and_seeds_upstream_mapping() -> None:
+    original = json.dumps(
+        {"ServerName": "Upstream", "MediaSources": [REMOTE_SOURCE]},
+        indent=2,
+    ).encode("utf-8")
+
+    def upstream(request: Request, transaction: int) -> httpx.Response:
+        del request, transaction
+        return httpx.Response(200, content=original, headers={"content-type": "application/json"})
+
+    app, patcher = _app_with_fake_upstream(
+        upstream,
+        playback_info_response_fields={"ServerName": "Proxy"},
+        playback_info_media_source_fields={"Protocol": "File", "SupportsTranscoding": False},
+    )
+    try:
+        with TestClient(app) as client:
+            app.state.dispatcher._client_policy = ClientPolicy(
+                (),
+                playback_bypass_clients=("BypassClient",),
+            )
+            bypassed = client.post(
+                "/Items/item-id/PlaybackInfo",
+                headers={"x-emby-client": "BypassClient"},
+            )
+            # Byte-identical to the upstream body: no field override is applied.
+            assert bypassed.content == original
+
+            redirect = client.get(
+                "/Videos/item-id/stream.mkv",
+                params={"MediaSourceId": "source-id"},
+                follow_redirects=False,
+            )
+            assert redirect.status_code == 302
+            assert redirect.headers["location"] == REMOTE_SOURCE["Path"]
+
+            # A non-bypassing client still receives the configured fields.
+            modified = json.loads(client.post("/Items/item-id/PlaybackInfo").content)
+            assert modified["ServerName"] == "Proxy"
+            assert modified["MediaSources"][0]["Protocol"] == "File"
+    finally:
+        patcher.stop()
+
+
+def test_create_app_field_overrides_stay_isolated_across_requests() -> None:
+    def upstream(request: Request, transaction: int) -> httpx.Response:
+        del request
+        return httpx.Response(
+            200,
+            json={
+                "transaction": transaction,
+                "MediaSources": [{
+                    "Id": f"source-{transaction}",
+                    "Path": f"https://media.example/{transaction}.mkv",
+                }],
+            },
+        )
+
+    app, patcher = _app_with_fake_upstream(
+        upstream,
+        playback_info_response_fields={"Metadata": {"tags": ["proxy"]}},
+        playback_info_media_source_fields={"Tags": ["proxy"]},
+    )
+    try:
+        with TestClient(app) as client:
+            first = json.loads(client.post("/Items/item-id/PlaybackInfo").content)
+            first["Metadata"]["tags"].append("mutated")
+            first["MediaSources"][0]["Tags"].append("mutated")
+
+            second = json.loads(client.post("/Items/item-id/PlaybackInfo").content)
+
+            assert second["transaction"] == 2
+            assert second["Metadata"] == {"tags": ["proxy"]}
+            assert second["MediaSources"][0]["Tags"] == ["proxy"]
+    finally:
+        patcher.stop()
+
+
+def test_create_app_field_overrides_stay_isolated_across_concurrent_requests() -> None:
+    def upstream(request: Request, transaction: int) -> httpx.Response:
+        del request
+        return httpx.Response(
+            200,
+            json={
+                "transaction": transaction,
+                "MediaSources": [{
+                    "Id": f"source-{transaction}",
+                    "Path": f"https://media.example/{transaction}.mkv",
+                }],
+            },
+        )
+
+    app, patcher = _app_with_fake_upstream(
+        upstream,
+        playback_info_media_source_fields={"Tags": ["proxy"], "Id": "rewritten"},
+    )
+
+    async def scenario() -> list[httpx.Response]:
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://proxy"
+            ) as client:
+                return await asyncio.gather(*[
+                    client.post(
+                        "/Items/abcdef0123456789abcdef0123456789/PlaybackInfo",
+                        headers={"X-Emby-Device-Id": f"device-{index}"},
+                    )
+                    for index in range(4)
+                ])
+
+    try:
+        responses = asyncio.run(scenario())
+    finally:
+        patcher.stop()
+
+    upstream_client = app.state.dispatcher._playback._http_client  # type: ignore[attr-defined]
+    assert len(upstream_client.calls) == 4
+    documents = [json.loads(response.content) for response in responses]
+    assert sorted(document["transaction"] for document in documents) == [1, 2, 3, 4]
+    for document in documents:
+        source = document["MediaSources"][0]
+        assert source["Tags"] == ["proxy"]
+        assert source["Id"] == "rewritten"
+        assert source["Path"] == f"https://media.example/{document['transaction']}.mkv"
+        source["Tags"].append("mutated")
+    assert all(
+        source["Tags"] == ["proxy"]
+        for source in (
+            json.loads(response.content)["MediaSources"][0] for response in responses
+        )
+    )
+
+
+def test_field_names_are_literal_and_case_sensitive() -> None:
+    document = {"MediaSources": [{
+        "Id": "source-id",
+        "Path": "https://media.example/movie.mkv",
+        "Protocol": "Http",
+    }]}
+    service = playback_service_with_fields(media_source_fields={
+        "protocol": "File",
+        "Some.Dotted": 1,
+    })
+
+    source = asyncio.run(service.modify(document))["MediaSources"][0]
+
+    # No dotted-path or case folding: two literal, distinct field names are added.
+    assert source["protocol"] == "File"
+    assert source["Protocol"] == "Http"
+    assert source["Some.Dotted"] == 1
+    assert "Some" not in source
+
+
+def test_conflicting_overridden_id_follows_existing_cache_semantics() -> None:
+    cache = MediaSourceCache()
+    cache.remember("source-b", "https://media.example/b-stale.mkv")
+    service = PlaybackService(
+        MediaSourceService(MediaResolver()),
+        cache,
+        PlaybackFieldOverrides(media_source_fields={"Id": "source-b"}),
+    )
+    document = {"MediaSources": [{
+        "Id": "source-a",
+        "Path": "https://media.example/a.mkv",
+    }]}
+
+    source = asyncio.run(service.modify(document))["MediaSources"][0]
+
+    # Both sources now claim one ID; the existing remember() rules decide the
+    # stored path. Nothing else is cleaned up.
+    assert source["Id"] == "source-b"
+    assert cache.get("source-a") is None
+    assert cache.get("source-b") == "https://media.example/a.mkv"

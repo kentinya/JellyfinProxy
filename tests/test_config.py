@@ -189,3 +189,252 @@ def test_module_settings_and_startup_ignore_legacy_cache_environment(
         assert name not in completed.stdout
     # The startup path still resolves the untouched settings.
     assert "http://127.0.0.1:8096" in completed.stdout
+
+
+# --- PlaybackInfo field configuration -------------------------------------
+
+def _write_config(tmp_path: Path, lines: list[str]) -> Path:
+    config_file = tmp_path / "JellyfinProxy.toml"
+    config_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return config_file
+
+
+def test_from_env_has_empty_playback_info_field_tables(monkeypatch) -> None:
+    monkeypatch.delenv("PLAYBACK_INFO_RESPONSE_FIELDS", raising=False)
+    monkeypatch.delenv("PLAYBACK_INFO_MEDIA_SOURCE_FIELDS", raising=False)
+
+    settings = Settings.from_env()
+
+    assert settings.playback_info_response_fields == {}
+    assert settings.playback_info_media_source_fields == {}
+
+
+def test_from_file_without_playback_info_table_keeps_empty_fields(tmp_path: Path) -> None:
+    config_file = _write_config(tmp_path, ['listen_port = 8097'])
+    settings = Settings.from_file(config_file)
+    assert settings.playback_info_response_fields == {}
+    assert settings.playback_info_media_source_fields == {}
+
+
+def test_from_file_with_empty_playback_info_table_keeps_empty_fields(tmp_path: Path) -> None:
+    config_file = _write_config(tmp_path, ["[playback_info]"])
+    settings = Settings.from_file(config_file)
+    assert settings.playback_info_response_fields == {}
+    assert settings.playback_info_media_source_fields == {}
+
+
+def test_from_file_with_explicit_empty_field_tables_keeps_empty_fields(tmp_path: Path) -> None:
+    config_file = _write_config(tmp_path, [
+        "[playback_info.response_fields]",
+        "[playback_info.media_source_fields]",
+    ])
+    settings = Settings.from_file(config_file)
+    assert settings.playback_info_response_fields == {}
+    assert settings.playback_info_media_source_fields == {}
+
+
+def test_from_file_reads_only_listed_fields_and_keeps_root_settings(tmp_path: Path) -> None:
+    config_file = _write_config(tmp_path, [
+        'jellyfin_url = "http://jellyfin:8096"',
+        'listen_port = 8097',
+        "[playback_info.response_fields]",
+        'ServerName = "Home"',
+        "[playback_info.media_source_fields]",
+        'SupportsDirectPlay = true',
+        "[playback_info.media_source_fields.Nested]",
+        'Kept = "as-object"',
+    ])
+
+    settings = Settings.from_file(config_file)
+
+    assert settings.playback_info_response_fields == {"ServerName": "Home"}
+    assert settings.playback_info_media_source_fields == {
+        "SupportsDirectPlay": True,
+        "Nested": {"Kept": "as-object"},
+    }
+    # The tables sit after the root keys here, so the root settings still load.
+    assert settings.jellyfin_url == "http://jellyfin:8096"
+    assert settings.listen_port == 8097
+
+
+def test_from_file_keeps_json_value_types(tmp_path: Path) -> None:
+    config_file = _write_config(tmp_path, [
+        "[playback_info.response_fields]",
+        'Text = "false"',
+        "Flag = false",
+        "Whole = 7",
+        "Fraction = 1.5",
+        "Items = [1, \"two\", false]",
+        'Mapping = { inner = [{ deep = 1 }] }',
+        "[playback_info.media_source_fields]",
+        'Protocol = "File"',
+        "SupportsTranscoding = false",
+    ])
+
+    settings = Settings.from_file(config_file)
+
+    response_fields = settings.playback_info_response_fields
+    assert response_fields["Text"] == "false"
+    assert response_fields["Text"] is not False
+    assert response_fields["Flag"] is False
+    assert response_fields["Whole"] == 7
+    assert isinstance(response_fields["Whole"], int)
+    assert response_fields["Fraction"] == 1.5
+    assert response_fields["Items"] == [1, "two", False]
+    assert response_fields["Mapping"] == {"inner": [{"deep": 1}]}
+    assert settings.playback_info_media_source_fields == {
+        "Protocol": "File",
+        "SupportsTranscoding": False,
+    }
+
+
+def test_from_file_field_tables_are_independent_copies(tmp_path: Path) -> None:
+    config_file = _write_config(tmp_path, [
+        "[playback_info.media_source_fields]",
+        "Tags = [\"a\"]",
+    ])
+
+    first = Settings.from_file(config_file)
+    second = Settings.from_file(config_file)
+    first.playback_info_media_source_fields["Tags"].append("mutated")
+
+    assert first.playback_info_media_source_fields["Tags"] == ["a", "mutated"]
+    assert second.playback_info_media_source_fields["Tags"] == ["a"]
+
+
+def test_from_env_has_no_playback_info_field_environment_variables(monkeypatch) -> None:
+    """Only TOML configures field overrides; no environment variable is invented."""
+
+    monkeypatch.setenv("PLAYBACK_INFO_RESPONSE_FIELDS", '{"ServerName":"Env"}')
+    monkeypatch.setenv("PLAYBACK_INFO_MEDIA_SOURCE_FIELDS", '{"Protocol":"File"}')
+
+    settings = Settings.from_env()
+
+    assert settings.playback_info_response_fields == {}
+    assert settings.playback_info_media_source_fields == {}
+
+
+@pytest.mark.parametrize(("lines", "location"), [
+    pytest.param(["playback_info = 7"], "playback_info", id="non-table-playback-info"),
+    pytest.param(['playback_info = "text"'], "playback_info", id="string-playback-info"),
+    pytest.param(
+        ["[playback_info]", 'response_fields = "ServerName"'],
+        "playback_info.response_fields",
+        id="non-table-response-fields",
+    ),
+    pytest.param(
+        ["[playback_info]", 'media_source_fields = ["Protocol"]'],
+        "playback_info.media_source_fields",
+        id="array-media-source-fields",
+    ),
+    pytest.param(
+        ["[playback_info.response_fields]", '"" = "value"'],
+        "playback_info.response_fields",
+        id="empty-response-field-name",
+    ),
+    pytest.param(
+        ["[playback_info.media_source_fields]", '"" = "value"'],
+        "playback_info.media_source_fields",
+        id="empty-media-source-field-name",
+    ),
+    pytest.param(
+        ["[playback_info.response_fields]", 'MediaSources = []'],
+        "playback_info.response_fields.MediaSources",
+        id="reserved-media-sources",
+    ),
+    pytest.param(
+        ["[playback_info.response_fields]", "Date = 2026-10-25"],
+        "playback_info.response_fields.Date",
+        id="date-value",
+    ),
+    pytest.param(
+        ["[playback_info.media_source_fields]", "Time = 07:30:00"],
+        "playback_info.media_source_fields.Time",
+        id="time-value",
+    ),
+    pytest.param(
+        ["[playback_info.media_source_fields]", "At = 2026-10-25T07:30:00Z"],
+        "playback_info.media_source_fields.At",
+        id="datetime-value",
+    ),
+    pytest.param(
+        ["[playback_info.response_fields]", "Number = nan"],
+        "playback_info.response_fields.Number",
+        id="nan-value",
+    ),
+    pytest.param(
+        ["[playback_info.response_fields]", "Number = -inf"],
+        "playback_info.response_fields.Number",
+        id="inf-value",
+    ),
+    pytest.param(
+        ["[playback_info.response_fields]", 'Nested = { inner = nan }'],
+        "playback_info.response_fields.Nested.inner",
+        id="nested-nan-value",
+    ),
+    pytest.param(
+        ["[playback_info.media_source_fields]", "Items = [1, { deep = { when = 07:30:00 } }]"],
+        "playback_info.media_source_fields.Items[1].deep.when",
+        id="deep-time-value",
+    ),
+])
+def test_from_file_rejects_invalid_field_configuration(
+    tmp_path: Path, lines: list[str], location: str,
+) -> None:
+    config_file = _write_config(tmp_path, lines)
+
+    with pytest.raises(ValueError) as excinfo:
+        Settings.from_file(config_file)
+
+    message = str(excinfo.value)
+    assert location in message
+    # The message names the location and the offending type only.
+    assert "Traceback" not in message
+    assert "nan" not in message.replace("NaN", "").lower()
+    assert "07:30:00" not in message
+    assert "2026-10-25" not in message
+
+
+def test_invalid_field_configuration_error_does_not_leak_config_value(tmp_path: Path) -> None:
+    secret = "super-secret-media-host"
+    config_file = _write_config(tmp_path, [
+        "[playback_info.response_fields]",
+        "At = 2026-10-25T07:30:00Z",
+        f'Note = "{secret}"',
+    ])
+
+    with pytest.raises(ValueError) as excinfo:
+        Settings.from_file(config_file)
+
+    assert secret not in str(excinfo.value)
+    assert "playback_info.response_fields.At" in str(excinfo.value)
+    assert "datetime" in str(excinfo.value)
+
+
+def test_startup_reports_invalid_field_configuration_without_value(tmp_path: Path) -> None:
+    secret = "super-secret-media-host"
+    config_file = _write_config(tmp_path, [
+        f'log_file = "{tmp_path / "app.log"}"',
+        f'access_log_file = "{tmp_path / "access.log"}"',
+        "[playback_info.response_fields]",
+        f'Note = "{secret}"',
+        "At = 2026-10-25",
+    ])
+    environment = {
+        key: value for key, value in os.environ.items() if not key.startswith("PLAYBACK_INFO_")
+    }
+
+    completed = subprocess.run(
+        [sys.executable, "main.py", "--config", str(config_file)],
+        cwd=REPO_ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+
+    assert completed.returncode != 0
+    assert "playback_info.response_fields.At" in completed.stderr
+    assert secret not in completed.stderr
+    assert secret not in completed.stdout
