@@ -16,13 +16,16 @@
   `74992bbd004a53c0522bb49e5c0229131b00ec88`；AC-1～8 本地范围通过。B 审查发现并修正
   README 将 `client_identified` 覆盖面写窄的纯文档问题；全套 pytest 167 passed。证据见
   `artifacts/validation-evidence/S1/s1-2-impl-20261025-01/`，本地假上游不代表真实 12.3。
-- [S1.3](Task/S1.3-playback-info-field-configuration.md)：**PLANNED**，Task Base
-  `62eb64c932fea1b0f02afd941c2108468df91d6d`；实施 Head 为 **NOT SET**。将实现缺省 / 空表不改、
-  显式字段覆盖、启动校验与最终直链一致性；F-08 / 最终真实候选对照留给 S1.4。
-- S1.4 最终真实对照待 S1.3 后逐步规划。
+- [S1.3](Task/S1.3-playback-info-field-configuration.md)：**READY FOR B REVIEW**，Task Base
+  `62eb64c932fea1b0f02afd941c2108468df91d6d`；实现 Head `a0cc7cddff32da585923c5ff11d3977ea910d87a`
+  （本地实现候选，非最终产品 Head）。已交付缺省 / 空表不改、显式字段表、严格启动校验与最终
+  直链一致性；独立 B 审查尚 PENDING。证据见
+  `artifacts/validation-evidence/S1/s1-3-impl-20261025-01/`（未跟踪），为假上游与单元结果。
+  F-08 / 最终真实候选对照留给 S1.4。
+- S1.4 最终真实对照待 S1.3 获得 B PASS 后逐步规划。
 - RO-1～9 均未完成；候选 C / F-01～08 / C 的 RJ-01～12 为 NOT RUN，
   最终产品 Implementation Head 为 NOT SET，A Final Review **PENDING**。
 
 ```text
-Next Action: Developer implements planned S1.3
+Next Action: B independently reviews S1.3 (Task Base 62eb64c..a0cc7cd)
 ```
