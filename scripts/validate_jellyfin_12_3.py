@@ -753,7 +753,9 @@ def command_verify(arguments: argparse.Namespace) -> int:
     cases = _parse_cases(arguments.cases) if arguments.cases.strip() else list(REQUIRED_CASES)
     report = evidence.verify(paths, expected_cases=cases)
     evidence.report_to_console(report)
-    return 0 if not report.failed else 1
+    # Only a FAIL invalidates the bundle. A WARN records context that the contract
+    # already allows (e.g. a documentation-only successor advancing the branch head).
+    return 1 if any(check["status"] == "FAIL" for check in report.checks) else 0
 
 
 if __name__ == "__main__":
