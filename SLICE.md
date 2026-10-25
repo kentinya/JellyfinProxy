@@ -12,12 +12,13 @@
   改前 J / B-on / B-off 基线及 RR-1 / RR-2 已接受；独立真实补证 18/18、回归 182 passed。
   最终审查证据：`artifacts/validation-evidence/S1/s1-1-b-final-review-20261025-01/`；
   原 05 基线、补证 01 / 02 与历轮 B 记录保留。
-- [S1.2](Task/S1.2-remove-playback-info-cache.md)：**PLANNED**，完整范围、验收与测试已发布，
-  实施 Head 为 NOT SET；当前入口见 [TASK](TASK.md)。
+- [S1.2](Task/S1.2-remove-playback-info-cache.md)：**READY FOR B REVIEW**，由 Developer 交付
+  Implementation Head `74992bbd004a53c0522bb49e5c0229131b00ec88`；AC-1～8 已作本地映射，
+  独立 B 审查 **PENDING**，证据见 `artifacts/validation-evidence/S1/s1-2-impl-20261025-01/`。
 - S1.3 字段配置、S1.4 最终真实对照仍待依赖完成后逐步规划。
 - RO-1～9 均未完成；候选 C / F-01～08 / C 的 RJ-01～12 为 NOT RUN，
   最终产品 Implementation Head 为 NOT SET，A Final Review **PENDING**。
 
 ```text
-Next Action: Developer implements planned S1.2
+Next Action: B independently reviews S1.2 (7a436110..74992bbd) and re-assesses all RO
 ```
