@@ -21,13 +21,17 @@
   及 e903fa9 文档后继。AC-1～9 本地成立；B 独立 41 项、五组 HTTP 假上游闭环通过，
   复用相同候选的 213 项全套。证据：`artifacts/validation-evidence/S1/s1-3-b-review-20261025-01/`。
   这不是真实 Jellyfin 或 Slice PASS。
-- [S1.4](Task/S1.4-candidate-real-validation-and-handoff.md)：**PLANNED**，Task Base 固定为
-  产品输入 `a0cc7cddff32da585923c5ff11d3977ea910d87a`，Plan Checkpoint / Implementation Head
-  为 NOT SET。补足候选 C 的 RJ-01～12、F-08、适用原生打包及最终交接；工具可选，未开始实施。
-- 全部 RO 已重评：RO-1～6 本地 PASS，F-01～07 本地 PASS；C 的真实矩阵和 F-08 NOT RUN，
-  RO-7 / RO-8 / RO-9 未完成。最终产品 Implementation Head NOT SET，A Final Review **PENDING**。
+- [S1.4](Task/S1.4-candidate-real-validation-and-handoff.md)：**READY FOR B REVIEW**，Task Base 与
+  Implementation Head 均为 `a0cc7cddff32da585923c5ff11d3977ea910d87a`（产品无需变更，未为造提交
+  修改产品），Plan Checkpoint `d47a91e`。候选 C 在新建隔离官方 12.3 实例上完成 8 套配置、
+  47 项真实功能检查全部 PASS，F-08 成立；`amd64` 原生构建与冻结二进制 smoke PASS，完整
+  pytest 213 passed。证据：`artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/`。
+  B 独立审查 **PENDING**；真客户端与 `arm64` NOT RUN。
+- RO 状态：RO-1～6 及 F-01～07 本地范围 PASS；本轮补足 RJ-01～12 与 F-08 的真实候选证据，
+  RO-7 / RO-9 的真实服务部分已有 C 结果，RO-8 的最终交接仍待独立 B 审查与 A 最终审查确认。
+  最终产品 Implementation Head 与 A Final Review 保持 **PENDING**，Slice 仍 ACTIVE。
   当前版本仍为未发布 0.9.3 检查点，变化记录在 Unreleased；不自动编号或发布。
 
 ```text
-Next Action: Developer implements and validates planned S1.4
+Next Action: B independently reviews S1.4; A final review follows only after an independent B PASS
 ```

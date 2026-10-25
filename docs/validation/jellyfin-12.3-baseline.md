@@ -119,7 +119,11 @@ MediaSource；先删除 STRM 扫描、再写回并扫描，Jellyfin 才会用同
   编进该 URL；代理不编辑该字段，证据中单独说明。
 - 动态字段白名单只有 `PlaySessionId` 与 `MediaSources[].ETag`，每条都带说明；
   32 位十六进制 Item ID 属正常值，不作为凭据泄漏。
-- C（候选）对照项在 S1.1 标记 `NOT RUN — deferred to a later Slice task`。
+- C（候选）对照项在 S1.1 标记 `NOT RUN — deferred to a later Slice task`；S1.4 使用本工具重新
+  取得 J / B-on / B-off 基线后，以产品自身 `main.py --config` 启动候选 C，由同目录的
+  `candidate_driver.py`（单次取证脚本，非产品 CLI）完成 RJ-01～12 与 F-08 的 C 分组取证。
+  该脚本不是通用 `--groups C` 入口，也不修改产品；证据见
+  [`s1-4-candidate-20261025-01`](../../artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/README.md)。
 
 ## 7. 证据包
 
