@@ -29,11 +29,18 @@
   失效恢复结果保留，`amd64` 构建 / frozen smoke 与完整 213 passed 复用；B 独立 41 passed。
   原证据：`artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/`；
   B 证据：`artifacts/validation-evidence/S1/s1-4-b-review-20261025-01/`。
-- RO 全量重评见 S1.4 B 记录：RO-1～4 / 6 的已交付结果保留；RO-5 / 7 / 8 / 9 尚未完整满足。
-  F-01～07 及 F-08 字段部分成立，真实完整播放闭环仍需补证。
+  Developer 已在原 Task 补证 RR-1 / RR-2（产品无变更）：候选认证 / 未知 Item 在 `C-default`
+  与 `C-direct` 均为 200 / 401 / 404 / 200 且与真实 12.3 直连参照一致；产品直连的流式读取 / 提前
+  断开 / 上游释放 / 后续 Range 成立；默认 / 旧两项 / 单字段三套远程 302 闭环真正读取媒体后停止再
+  请求。7/7 PASS，三次丢弃 attempt 均为脚本 / 断言缺陷并已保留。证据：
+  `artifacts/validation-evidence/S1/s1-4-supplement-20261025-01/`。Task 现为
+  **READY FOR B REVIEW**，独立 B 复核与 RO-5 / 7 / 9 重评仍由 B 负责。
+- RO 全量重评见 S1.4 B 记录：RO-1～4 / 6 的已交付结果保留；RO-5 / 7 / 9 的证据缺口已按上文补足，
+  RO-8 收尾（独立 B、Closure Packet、A 最终审查）仍未完成。
+  F-01～07 及 F-08 字段部分成立，F-08 的完整默认 / 定制播放停止闭环已补齐。
   最终产品 Implementation Head 为 **NOT SET**，A Final Review **PENDING**，Slice 仍 ACTIVE。
   当前版本仍为未发布 0.9.3 检查点，变化记录在 Unreleased；不自动编号或发布。
 
 ```text
-Next Action: Developer supplements S1.4 RR-1 / RR-2; independent B review must pass before A final review
+Next Action: independent B re-review of S1.4 RR-1 / RR-2 supplemental evidence; A final review only after B PASS
 ```
