@@ -7,6 +7,24 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## Unreleased
+
+- Removed the complete PlaybackInfo JSON response cache. Every PlaybackInfo request
+  is forwarded upstream again, so a repeated or concurrent request for one Item no
+  longer reuses an earlier response body. Upstream errors that a cache hit used to
+  hide now surface per request.
+- Removed the cache-only configuration `playback_info_cache_enabled`,
+  `playback_info_cache_ttl_seconds`, `playback_info_cache_max_entries` and
+  `playback_cache_bypass_clients` together with their uppercase environment
+  variables. Legacy keys are ignored in TOML and the environment, so existing
+  configurations still start.
+- Removed the `X-JellyfinProxy-Cache` response header, the `playback_info_cache`
+  application log records and the `cache` field of `client_identified` logs.
+- Retained PlaybackInfo bypass bodies, direct-URL filling for Video redirects, the
+  Video 302 behaviour, media source path invalidation and the streaming proxy
+  fallback. The explicit PlaybackInfo field rules and release version are unchanged
+  in this checkpoint.
+
 ## 0.9.3 - 2026-10-24
 
 - Dropped the cached media source URL when a later PlaybackInfo response for the

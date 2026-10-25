@@ -45,11 +45,7 @@ video_bypass_clients = ["A"]
 C 无需出现在任何列表中。`bypass_clients` 优先级最高；同一个客户端如果也出现
 在其他列表中，仍会绕过所有修改。
 
-`PLAYBACK_CACHE_BYPASS_CLIENTS`（TOML：`playback_cache_bypass_clients`）可指定
-既不读取、也不填充 PlaybackInfo 缓存的客户端。该列表只控制缓存，不影响
-`playback_bypass_clients` 所控制的响应修改。
-
-PlaybackInfo 和 Video 请求会在应用日志中产生 `client_identified` 记录，包含
+PlaybackInfo 请求会在应用日志中产生 `client_identified` 记录，包含
 客户端名称、设备名称、设备 ID、User-Agent 以及最终选择的 `modify` 或 `bypass`
 动作。客户端字段会清理控制字符并限制长度，认证信息不会写入日志。
 
@@ -72,18 +68,18 @@ PlaybackInfo 和 Video 请求会在应用日志中产生 `client_identified` 记
 `MediaSources[].Path`，并应用已配置的策略规则。
 
 为避免客户端重复请求 PlaybackInfo 时再次触发 Jellyfin 使用 ffprobe 探测 STRM，
-代理默认缓存成功的上游 PlaybackInfo 响应 6 小时。每个媒体 Item ID 只保存一份；
-带连字符和无连字符 UUID、`/Items` 和 `/emby/Items`、GET 和 POST、查询参数、
-请求体、设备身份及 API Token 均共享该条目。绕过 PlaybackInfo 修改的客户端也会
-读取和填充原始响应缓存，非绕过客户端在读取缓存后再应用媒体策略。
-命中和未命中可通过响应头 `X-JellyfinProxy-Cache: HIT/MISS` 判断。可使用
-`playback_info_cache_enabled`、`playback_info_cache_ttl_seconds` 和
-`playback_info_cache_max_entries`（或对应的大写环境变量）调整缓存。缓存仅存于内存，
-进程重启后清空；某个请求首次探测 STRM 时仍需等待 Jellyfin 返回。
+旧版本曾缓存成功的上游 PlaybackInfo 响应。该缓存已撤除：每个 PlaybackInfo 请求
+都会独立转发到 Jellyfin，代理不再按 Item 复用响应正文，也不再提供缓存相关的
+配置项、`X-JellyfinProxy-Cache` 响应头或缓存日志字段。因此首次请求（以及每次
+刷新）都会等待 Jellyfin 自身完成解析，上游错误也会逐次显现，而不会被早前的
+成功响应掩盖。旧配置中的 `playback_info_cache_enabled`、
+`playback_info_cache_ttl_seconds`、`playback_info_cache_max_entries` 和
+`playback_cache_bypass_clients`（以及对应大写环境变量）会被忽略且不生效，
+无需删除即可启动。
 
 处理 `PlaybackInfo` 时，代理会在内存中缓存有效的 HTTP(S)
-`MediaSource.Id` 与 `Path`。即使客户端绕过 PlaybackInfo 修改，或命中原始响应缓存，
-也会记录直链，同时保持绕过客户端的响应正文原样返回。
+`MediaSource.Id` 与 `Path`。即使客户端绕过 PlaybackInfo 修改，也会记录直链，
+同时保持绕过客户端的响应正文原样返回。
 当同一 `MediaSourceId` 后续传入媒体源缓存的 Path 不是可用 HTTP(S) 地址（本地路径、
 空值、非 HTTP(S) 协议或缺少 host）时，缓存会删除该 ID 的旧直链，只影响这一个 ID；
 之后再次处理到有效地址会重新建立映射并恢复重定向。缓存方法也会捕获自身 URL 解析的

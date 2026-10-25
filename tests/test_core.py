@@ -3,11 +3,16 @@ from __future__ import annotations
 import asyncio
 import gzip
 import json
+from dataclasses import replace
+from unittest.mock import patch
 
 import httpx
 import pytest
 from fastapi import Request, Response
+from starlette.testclient import TestClient
 
+import main as main_module
+from config import Settings
 from handlers.video_handler import VideoHandler
 from handlers.playback_handler import PlaybackHandler
 from handlers.proxy_handler import ProxyHandler, response_headers, streaming_response_headers
@@ -23,7 +28,6 @@ from services.media_source_service import (
     ProtocolFileRule,
 )
 from services.playback_service import PlaybackService
-from services.playback_info_cache import PlaybackInfoCache
 
 
 class RewriteRule:
@@ -36,25 +40,30 @@ class RewriteRule:
         return None
 
 
-def test_playback_handler_serves_repeated_post_from_cache() -> None:
-    class CountingClient:
-        calls = 0
+def test_playback_handler_forwards_every_request_and_returns_own_response() -> None:
+    class TransactionClient:
+        def __init__(self) -> None:
+            self.calls: list[Request] = []
 
         async def forward(self, request: Request) -> httpx.Response:
-            self.calls += 1
+            self.calls.append(request)
+            transaction = len(self.calls)
             return httpx.Response(
                 200,
-                json={"MediaSources": [{
-                    "Id": "source-id",
-                    "Path": "https://media.example/movie.mkv",
-                }]},
+                json={
+                    "transaction": transaction,
+                    "MediaSources": [{
+                        "Id": f"source-{transaction}",
+                        "Path": f"https://media.example/{transaction}.mkv",
+                    }],
+                },
             )
 
     def request(
         device_id: bytes = b"android-device",
         body: bytes = b'{"DeviceProfile":{"Name":"Android"}}',
         api_key: bytes = b"first-token",
-        path: str = "/Items/item-id/PlaybackInfo",
+        path: str = "/Items/c7abcb3401d22d5cd3fd058cc914bdcf/PlaybackInfo",
     ) -> Request:
         sent = False
 
@@ -75,11 +84,10 @@ def test_playback_handler_serves_repeated_post_from_cache() -> None:
             "headers": [(b"x-emby-device-id", device_id)],
         }, receive)
 
-    client = CountingClient()
+    client = TransactionClient()
     handler = PlaybackHandler(
         client,  # type: ignore[arg-type]
         PlaybackService(MediaSourceService(MediaResolver())),
-        PlaybackInfoCache(),
     )
 
     first = asyncio.run(handler.handle(request()))
@@ -87,16 +95,29 @@ def test_playback_handler_serves_repeated_post_from_cache() -> None:
         device_id=b"television-device",
         body=b'{"DeviceProfile":{"Name":"Android TV"}}',
         api_key=b"second-token",
+        path="/emby/Items/c7abcb34-01d2-2d5c-d3fd-058cc914bdcf/PlaybackInfo",
     )))
 
-    assert client.calls == 1
-    assert first.headers["x-jellyfinproxy-cache"] == "MISS"
-    assert second.headers["x-jellyfinproxy-cache"] == "HIT"
-    assert second.body == first.body
+    assert len(client.calls) == 2
+    first_upstream, second_upstream = client.calls
+    assert first_upstream.url.path == "/Items/c7abcb3401d22d5cd3fd058cc914bdcf/PlaybackInfo"
+    assert second_upstream.url.path == "/emby/Items/c7abcb34-01d2-2d5c-d3fd-058cc914bdcf/PlaybackInfo"
+    assert first_upstream.url.query == "UserId=user-id&api_key=first-token"
+    assert second_upstream.url.query == "UserId=user-id&api_key=second-token"
+    assert first_upstream.headers["x-emby-device-id"] == "android-device"
+    assert second_upstream.headers["x-emby-device-id"] == "television-device"
+
+    # Each response carries the transaction of its own upstream call.
+    assert json.loads(first.body)["transaction"] == 1
+    assert json.loads(second.body)["transaction"] == 2
+    assert json.loads(first.body)["MediaSources"][0]["Id"] == "source-1"
+    assert json.loads(second.body)["MediaSources"][0]["Id"] == "source-2"
+    assert first.body != second.body
+    assert "x-jellyfinproxy-cache" not in first.headers
+    assert "x-jellyfinproxy-cache" not in second.headers
 
 
-@pytest.mark.parametrize("cache_mode", ["miss", "hit", "disabled"])
-def test_bypassed_playback_preserves_body_and_populates_video_redirect(cache_mode) -> None:
+def test_bypassed_playback_preserves_body_and_populates_video_redirect() -> None:
     original = b'{ "MediaSources": [{"Id":"source-id", "Path":"https://media.example/movie.mkv", "Protocol":"Http", "SupportsTranscoding":true}] }'
 
     class Client:
@@ -113,18 +134,15 @@ def test_bypassed_playback_preserves_body_and_populates_video_redirect(cache_mod
             "query_string": query, "headers": [(b"user-agent", b"Hills Windows/1.5.4")],
         })
 
-    cache = PlaybackInfoCache()
     client = Client()
     service = PlaybackService(MediaSourceService(MediaResolver(), [ProtocolFileRule()]))
-    handler = PlaybackHandler(client, service, cache)
-    playback_request = request("/Items/item-id/PlaybackInfo")
-    if cache_mode == "hit":
-        cache.remember(asyncio.run(handler._cache_key(playback_request)), original)
+    handler = PlaybackHandler(client, service)
     response = asyncio.run(handler.handle(
-        playback_request, modify=False, use_cache=cache_mode != "disabled",
+        request("/Items/item-id/PlaybackInfo"), modify=False,
     ))
     assert response.body == original
-    assert client.calls == (0 if cache_mode == "hit" else 1)
+    assert client.calls == 1
+    assert "x-jellyfinproxy-cache" not in response.headers
 
     class UnexpectedProxy:
         async def handle(self, request):
@@ -148,11 +166,10 @@ class PlaybackPipeline:
         self.body = body
         self.status_code = status_code
         self.calls = 0
-        self.cache = PlaybackInfoCache()
         self.service = PlaybackService(
             MediaSourceService(MediaResolver(), [ProtocolFileRule()]),
         )
-        self.handler = PlaybackHandler(self, self.service, self.cache)  # type: ignore[arg-type]
+        self.handler = PlaybackHandler(self, self.service)  # type: ignore[arg-type]
 
     async def forward(self, request: Request) -> httpx.Response:
         self.calls += 1
@@ -172,12 +189,6 @@ class PlaybackPipeline:
     def playback(self, *args, **kwargs) -> Response:
         return asyncio.run(self.handler.handle(*args, **kwargs))
 
-    def prefilled_playback(self, **kwargs) -> Response:
-        """Fill the JSON cache, then serve it from the cache (HIT) path."""
-        probe = self.request()
-        asyncio.run(self.handler.handle(probe, **kwargs))
-        return asyncio.run(self.handler.handle(probe, **kwargs))
-
 
 INVALID_PIPELINE_PATHS = [
     pytest.param("/media/movie.mkv", id="local-path"),
@@ -196,27 +207,18 @@ def playback_document(path, media_source_id: str = "source-id") -> bytes:
     return json.dumps({"MediaSources": [source]}).encode("utf-8")
 
 
-@pytest.mark.parametrize("cache_mode", ["miss", "hit", "disabled"])
 @pytest.mark.parametrize("modify", [True, False])
 @pytest.mark.parametrize("path", INVALID_PIPELINE_PATHS)
 def test_playback_pipeline_clears_stale_mapping_for_invalid_path(
-    cache_mode, modify, path
+    modify, path
 ) -> None:
     body = playback_document(path)
     pipeline = PlaybackPipeline(body)
     pipeline.service.media_source_cache.remember("source-id", OLD_VIDEO_URL)
 
-    if cache_mode == "hit":
-        response = pipeline.prefilled_playback(modify=modify)
-        assert pipeline.calls == 1
-        assert response.headers["x-jellyfinproxy-cache"] == "HIT"
-    else:
-        response = pipeline.playback(
-            pipeline.request(), modify=modify, use_cache=cache_mode != "disabled",
-        )
-        assert pipeline.calls == 1
-        if cache_mode == "miss":
-            assert response.headers["x-jellyfinproxy-cache"] == "MISS"
+    response = pipeline.playback(pipeline.request(), modify=modify)
+    assert pipeline.calls == 1
+    assert "x-jellyfinproxy-cache" not in response.headers
 
     assert pipeline.service.media_source_cache.get("source-id") is None
     if modify:
@@ -376,35 +378,269 @@ def test_playback_pipeline_missing_path_clears_only_that_media_source_id() -> No
     assert pipeline.service.media_source_cache.get("source-b") == "https://media.example/b.mkv"
 
 
-def test_playback_cache_normalizes_emby_and_uuid_path_variants() -> None:
-    class CountingClient:
-        calls = 0
+def test_create_app_forwards_playback_and_emby_playback_to_upstream_each_time() -> None:
+    """The real application assembly must not keep a response cache."""
+
+    class TransactionClient:
+        def __init__(self, **kwargs) -> None:
+            self.calls: list[httpx.Request] = []
 
         async def forward(self, request: Request) -> httpx.Response:
-            self.calls += 1
-            return httpx.Response(200, json={"MediaSources": []})
+            self.calls.append(request)
+            transaction = len(self.calls)
+            return httpx.Response(
+                200,
+                json={
+                    "transaction": transaction,
+                    "MediaSources": [{
+                        "Id": f"source-{transaction}",
+                        "Path": f"https://media.example/{transaction}.mkv",
+                    }],
+                },
+                headers={"content-type": "application/json"},
+            )
 
-    def request(path: str) -> Request:
-        return Request({
-            "type": "http", "method": "POST", "scheme": "http",
-            "server": ("proxy", 8097), "path": path,
-            "query_string": b"", "headers": [],
-        })
+        async def close(self) -> None:
+            pass
 
-    client = CountingClient()
-    handler = PlaybackHandler(
-        client,  # type: ignore[arg-type]
-        PlaybackService(MediaSourceService(MediaResolver())),
-        PlaybackInfoCache(),
-    )
-    compact = "/emby/Items/c7abcb3401d22d5cd3fd058cc914bdcf/PlaybackInfo"
-    hyphenated = "/Items/c7abcb34-01d2-2d5c-d3fd-058cc914bdcf/PlaybackInfo"
+    settings = replace(Settings.from_env(), log_file="", access_log_file="")
+    with patch.object(main_module, "JellyfinHttpClient", TransactionClient):
+        app = main_module.create_app(settings)
+        with TestClient(app) as client:
+            dispatcher = app.state.dispatcher
+            assert not hasattr(dispatcher, "_playback_info_cache")
+            assert not hasattr(dispatcher._playback, "_cache")
 
-    asyncio.run(handler.handle(request(compact), modify=False))
-    hit = asyncio.run(handler.handle(request(hyphenated)))
+            compact = client.post(
+                "/Items/c7abcb3401d22d5cd3fd058cc914bdcf/PlaybackInfo",
+                json={"DeviceProfile": {"Name": "Android"}},
+            )
+            hyphenated = client.get(
+                "/emby/Items/c7abcb34-01d2-2d5c-d3fd-058cc914bdcf/PlaybackInfo",
+                params={"UserId": "user-id"},
+            )
 
-    assert client.calls == 1
-    assert hit.headers["x-jellyfinproxy-cache"] == "HIT"
+    upstream = dispatcher._playback._http_client.calls  # type: ignore[attr-defined]
+    assert len(upstream) == 2
+    assert upstream[0].method == "POST"
+    assert upstream[0].url.path == "/Items/c7abcb3401d22d5cd3fd058cc914bdcf/PlaybackInfo"
+    assert upstream[1].method == "GET"
+    assert upstream[1].url.path == "/emby/Items/c7abcb34-01d2-2d5c-d3fd-058cc914bdcf/PlaybackInfo"
+    assert upstream[1].url.query == "UserId=user-id"
+
+    assert compact.status_code == 200
+    assert hyphenated.status_code == 200
+    assert json.loads(compact.content)["transaction"] == 1
+    assert json.loads(hyphenated.content)["transaction"] == 2
+    for response in (compact, hyphenated):
+        assert "x-jellyfinproxy-cache" not in response.headers
+        assert response.headers["x-jellyfinproxy-version"]
+        assert response.headers["x-request-id"]
+
+
+def _app_with_fake_upstream(handler) -> tuple[object, object]:
+    """Build the real app with a stub HTTP client class supplied by the test."""
+
+    class MediaStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b"media-"
+            yield b"bytes"
+
+    class StubClient:
+        def __init__(self, **kwargs) -> None:
+            self.kwargs = kwargs
+            self.calls: list[httpx.Request] = []
+            self.stream_calls: list[httpx.Request] = []
+
+        async def forward(self, request: Request) -> httpx.Response:
+            self.calls.append(request)
+            return handler(request, len(self.calls))
+
+        async def forward_stream(self, request: Request) -> httpx.Response:
+            self.stream_calls.append(request)
+            return httpx.Response(
+                206,
+                headers={"content-range": "bytes 0-8/100", "content-length": "11"},
+                stream=MediaStream(),
+            )
+
+        async def close(self) -> None:
+            pass
+
+    settings = replace(Settings.from_env(), log_file="", access_log_file="")
+    patcher = patch.object(main_module, "JellyfinHttpClient", StubClient)
+    patcher.start()
+    return main_module.create_app(settings), patcher
+
+
+def test_create_app_issues_one_upstream_call_per_concurrent_request() -> None:
+    rejected: list[str] = []
+
+    def upstream(request: Request, transaction: int) -> httpx.Response:
+        if transaction == 1:
+            return httpx.Response(
+                200,
+                json={
+                    "transaction": transaction,
+                    "MediaSources": [{
+                        "Id": "source-id",
+                        "Path": f"https://media.example/{transaction}.mkv",
+                    }],
+                },
+            )
+        # The first response must never be reused for the remaining requests.
+        rejected.append(str(transaction))
+        return httpx.Response(503, json={"error": "no reuse"})
+
+    app, patcher = _app_with_fake_upstream(upstream)
+
+    async def scenario() -> list[httpx.Response]:
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://proxy"
+            ) as client:
+                return await asyncio.gather(*[
+                    client.post(
+                        "/Items/abcdef0123456789abcdef0123456789/PlaybackInfo",
+                        json={"DeviceProfile": {"Name": f"Device{index}"}},
+                        headers={"X-Emby-Device-Id": f"device-{index}"},
+                    )
+                    for index in range(4)
+                ])
+
+    try:
+        responses = asyncio.run(scenario())
+    finally:
+        patcher.stop()
+
+    upstream_client = app.state.dispatcher._playback._http_client  # type: ignore[attr-defined]
+    assert len(upstream_client.calls) == 4
+    devices = sorted(call.headers["x-emby-device-id"] for call in upstream_client.calls)
+    assert devices == [f"device-{index}" for index in range(4)]
+    assert [response.status_code for response in responses] == [200, 503, 503, 503]
+    successful = [
+        json.loads(response.content)["transaction"]
+        for response in responses
+        if response.status_code == 200
+    ]
+    assert successful == [1]
+    assert rejected == ["2", "3", "4"]
+    for response in responses:
+        assert "x-jellyfinproxy-cache" not in response.headers
+
+
+def test_create_app_bypass_forwards_original_body_and_fills_video_redirect() -> None:
+    original = b'{ "MediaSources": [{"Id":"source-id", "Path":"https://media.example/movie.mkv", "Protocol":"Http", "SupportsTranscoding":true}] }'
+    state = {"status": 200, "body": original}
+
+    def upstream(request: Request, transaction: int) -> httpx.Response:
+        del request, transaction
+        return httpx.Response(
+            state["status"],
+            content=state["body"],
+            headers={"content-type": "application/json", "x-jellyfinproxy-cache": "MISS"},
+        )
+
+    app, patcher = _app_with_fake_upstream(upstream)
+    try:
+        with TestClient(app) as client:
+            app.state.dispatcher._client_policy = ClientPolicy(
+                (),
+                playback_bypass_clients=("BypassClient",),
+                video_bypass_clients=("VideoBypassClient",),
+            )
+            headers = {"x-emby-client": "BypassClient"}
+            bypassed = client.post("/Items/item-id/PlaybackInfo", headers=headers)
+            # The bypass response body is the upstream bytes, not a re-serialization.
+            assert bypassed.content == original
+            # An upstream header is still forwarded by the existing adapter.
+            assert bypassed.headers["x-jellyfinproxy-cache"] == "MISS"
+
+            redirect = client.get(
+                "/Videos/item-id/stream.mkv",
+                params={"mediaSourceId": "source-id"},
+                follow_redirects=False,
+            )
+            assert redirect.status_code == 302
+            assert redirect.headers["location"] == "https://media.example/movie.mkv"
+
+            # A Video-bypassed client still streams through the transparent proxy.
+            streamed = client.get(
+                "/Videos/item-id/stream.mkv",
+                params={"mediaSourceId": "source-id"},
+                headers={"x-emby-client": "VideoBypassClient"},
+            )
+            assert streamed.status_code == 206
+            assert streamed.content == b"media-bytes"
+            assert streamed.headers["content-range"] == "bytes 0-8/100"
+            assert "location" not in streamed.headers
+
+            # A client without the bypass gets the modified document instead.
+            modified = client.post("/Items/item-id/PlaybackInfo")
+            document = json.loads(modified.content)
+            assert document["MediaSources"][0]["Protocol"] == "File"
+
+            # An upstream failure surfaces as-is; no earlier success is replayed.
+            state.update(status=401, body=b'{"error":"denied"}')
+            failed = client.post("/Items/item-id/PlaybackInfo")
+            assert failed.status_code == 401
+            assert failed.content == b'{"error":"denied"}'
+
+            state.update(status=200, body=original)
+            recovered = client.post("/Items/item-id/PlaybackInfo")
+            assert recovered.status_code == 200
+            assert json.loads(recovered.content)["MediaSources"][0]["Id"] == "source-id"
+    finally:
+        patcher.stop()
+
+    upstream_client = app.state.dispatcher._playback._http_client  # type: ignore[attr-defined]
+    assert len(upstream_client.calls) == 4
+    assert [call.url.path for call in upstream_client.stream_calls] == [
+        "/Videos/item-id/stream.mkv"
+    ]
+
+
+def test_create_app_playback_upstream_error_is_not_replayed_from_success() -> None:
+    calls = {"n": 0}
+
+    def upstream(request: Request, transaction: int) -> httpx.Response:
+        del request, transaction
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise httpx.ConnectError("upstream unreachable")
+        if calls["n"] == 3:
+            return httpx.Response(200, content=b"not-json", headers={"content-type": "text/plain"})
+        return httpx.Response(
+            200,
+            json={
+                "transaction": calls["n"],
+                "MediaSources": [{
+                    "Id": "source-id",
+                    "Path": "https://media.example/movie.mkv",
+                }],
+            },
+        )
+
+    app, patcher = _app_with_fake_upstream(upstream)
+    try:
+        with TestClient(app) as client:
+            first = client.post("/Items/item-id/PlaybackInfo")
+            assert first.status_code == 200
+
+            with pytest.raises(httpx.ConnectError):
+                client.post("/Items/item-id/PlaybackInfo")
+
+            broken = client.post("/Items/item-id/PlaybackInfo")
+            assert broken.status_code == 200
+            assert broken.content == b"not-json"
+
+            recovered = client.post("/Items/item-id/PlaybackInfo")
+            assert json.loads(recovered.content)["transaction"] == 4
+    finally:
+        patcher.stop()
+
+    upstream_client = app.state.dispatcher._playback._http_client  # type: ignore[attr-defined]
+    assert len(upstream_client.calls) == 4
 
 
 def test_routes_cover_playback_and_video_variants() -> None:
@@ -754,16 +990,6 @@ def test_client_can_bypass_playback_and_video_independently() -> None:
     assert policy.should_bypass(client_d, HandlerType.PLAYBACK)
     assert policy.should_bypass(client_d, HandlerType.VIDEO)
     assert policy.should_bypass(client_d, HandlerType.DEFAULT)
-
-
-def test_client_can_bypass_playback_cache_independently() -> None:
-    policy = ClientPolicy(
-        (),
-        playback_cache_bypass_clients=("No Cache Client",),
-    )
-    headers = {"user-agent": "No Cache Client/1.0"}
-    assert policy.should_bypass_playback_cache(headers)
-    assert not policy.should_bypass(headers, HandlerType.PLAYBACK)
 
 
 def test_media_resolver_only_analyzes_existing_http_urls() -> None:

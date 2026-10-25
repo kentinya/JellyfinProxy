@@ -15,20 +15,12 @@ class ClientPolicy:
         bypass_clients: tuple[str, ...],
         playback_bypass_clients: tuple[str, ...] = (),
         video_bypass_clients: tuple[str, ...] = (),
-        playback_cache_bypass_clients: tuple[str, ...] = (),
     ) -> None:
         self._bypass_clients = tuple(name.casefold() for name in bypass_clients)
         self._playback_bypass_clients = tuple(
             name.casefold() for name in playback_bypass_clients
         )
         self._video_bypass_clients = tuple(name.casefold() for name in video_bypass_clients)
-        self._playback_cache_bypass_clients = tuple(
-            name.casefold() for name in playback_cache_bypass_clients
-        )
-
-    def should_bypass_playback_cache(self, headers: Mapping[str, str]) -> bool:
-        identity = " ".join(headers.get(name, "") for name in self.HEADER_NAMES).casefold()
-        return any(client in identity for client in self._playback_cache_bypass_clients)
 
     def should_bypass(
         self,

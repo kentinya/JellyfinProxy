@@ -47,13 +47,9 @@ class Settings:
     listen_port: int
     bypass_clients: tuple[str, ...]
     playback_bypass_clients: tuple[str, ...]
-    playback_cache_bypass_clients: tuple[str, ...]
     video_bypass_clients: tuple[str, ...]
     debug: bool
     request_timeout_seconds: float
-    playback_info_cache_enabled: bool
-    playback_info_cache_ttl_seconds: float
-    playback_info_cache_max_entries: int
     log_level: str
     log_file: str
     access_log_file: str
@@ -66,13 +62,9 @@ class Settings:
             listen_port=int(os.getenv("LISTEN_PORT", "8097")),
             bypass_clients=_as_list(os.getenv("BYPASS_CLIENTS", "Infuse,Kodi")),
             playback_bypass_clients=_as_list(os.getenv("PLAYBACK_BYPASS_CLIENTS", "")),
-            playback_cache_bypass_clients=_as_list(os.getenv("PLAYBACK_CACHE_BYPASS_CLIENTS", "")),
             video_bypass_clients=_as_list(os.getenv("VIDEO_BYPASS_CLIENTS", "")),
             debug=_as_bool(os.getenv("DEBUG", "false")),
             request_timeout_seconds=float(os.getenv("REQUEST_TIMEOUT_SECONDS", "60")),
-            playback_info_cache_enabled=_as_bool(os.getenv("PLAYBACK_INFO_CACHE_ENABLED", "true")),
-            playback_info_cache_ttl_seconds=float(os.getenv("PLAYBACK_INFO_CACHE_TTL_SECONDS", "21600")),
-            playback_info_cache_max_entries=int(os.getenv("PLAYBACK_INFO_CACHE_MAX_ENTRIES", "4096")),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             log_file=os.getenv("LOG_FILE", "JellyfinProxy.log"),
             access_log_file=os.getenv("ACCESS_LOG_FILE", "access.log"),
@@ -123,31 +115,12 @@ class Settings:
             listen_port=int(os.getenv("LISTEN_PORT", str(values.get("listen_port", 8097)))),
             bypass_clients=_configured_list(bypass_value),
             playback_bypass_clients=_client_list(values, "playback_bypass_clients"),
-            playback_cache_bypass_clients=_client_list(values, "playback_cache_bypass_clients"),
             video_bypass_clients=_client_list(values, "video_bypass_clients"),
             debug=_as_bool(os.getenv("DEBUG", str(values.get("debug", False)))),
             request_timeout_seconds=float(
                 os.getenv(
                     "REQUEST_TIMEOUT_SECONDS",
                     str(values.get("request_timeout_seconds", 60)),
-                )
-            ),
-            playback_info_cache_enabled=_as_bool(
-                os.getenv(
-                    "PLAYBACK_INFO_CACHE_ENABLED",
-                    str(values.get("playback_info_cache_enabled", True)),
-                )
-            ),
-            playback_info_cache_ttl_seconds=float(
-                os.getenv(
-                    "PLAYBACK_INFO_CACHE_TTL_SECONDS",
-                    str(values.get("playback_info_cache_ttl_seconds", 21600)),
-                )
-            ),
-            playback_info_cache_max_entries=int(
-                os.getenv(
-                    "PLAYBACK_INFO_CACHE_MAX_ENTRIES",
-                    str(values.get("playback_info_cache_max_entries", 4096)),
                 )
             ),
             log_level=os.getenv("LOG_LEVEL", str(values.get("log_level", "INFO"))),

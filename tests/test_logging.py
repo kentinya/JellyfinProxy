@@ -91,3 +91,66 @@ def test_client_identity_headers_are_safe_and_bounded() -> None:
     assert "\n" not in cleaned
     assert "Infuse  forged-log" in cleaned
     assert len(cleaned) == CLIENT_HEADER_LIMIT
+
+
+def test_playback_request_logging_has_no_cache_diagnostics(capsys) -> None:
+    import asyncio
+
+    import httpx
+
+    from handlers.dispatcher import Dispatcher
+    from policies.client_policy import ClientPolicy
+    from routers.router import Router
+    from services.media_resolver import MediaResolver
+    from services.media_source_service import MediaSourceService
+    from services.playback_service import PlaybackService
+
+    class FakeClient:
+        async def forward(self, request: Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "MediaSources": [{
+                        "Id": "source-id",
+                        "Path": "https://media.example/movie.mkv",
+                    }]
+                },
+            )
+
+    configure_logging("INFO")
+    dispatcher = Dispatcher(
+        router=Router(),
+        client_policy=ClientPolicy((), playback_bypass_clients=("PlaybackOnly",)),
+        http_client=FakeClient(),  # type: ignore[arg-type]
+        playback_service=PlaybackService(MediaSourceService(MediaResolver())),
+    )
+    request = Request({
+        "type": "http",
+        "method": "POST",
+        "scheme": "http",
+        "server": ("proxy", 8097),
+        "path": "/Items/item-id/PlaybackInfo",
+        "query_string": b"api_key=secret",
+        "headers": [
+            (b"x-emby-client", b"CacheOnly"),
+            (b"x-emby-device-name", b"Living Room"),
+            (b"x-emby-device-id", b"device-id"),
+        ],
+    })
+
+    token = bind_request_id("log-request-id")
+    try:
+        response = asyncio.run(dispatcher.dispatch(request))
+    finally:
+        reset_request_id(token)
+
+    output = capsys.readouterr().out
+    assert "client_identified route=playback action=modify" in output
+    assert "cache=" not in output
+    assert "playback_info_cache" not in output
+    assert "request_id=log-request-id" in output
+    assert "emby_client='CacheOnly'" in output
+    assert "device_name='Living Room'" in output
+    assert "secret" not in output
+    # The former cache-bypass client is no longer special in any way.
+    assert "x-jellyfinproxy-cache" not in response.headers
