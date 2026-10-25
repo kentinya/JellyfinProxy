@@ -8,7 +8,7 @@
 ```text
 Slice ID: S1
 Owner: A
-Status: READY FOR A REVIEW
+Status: PASS / CLOSED
 Activated On: 2026-10-24
 Contract Revision: 4 — functional acceptance; validation tools optional
 Base SHA: 6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5
@@ -18,7 +18,7 @@ Required Test Level: T4
 Target Upstream: Jellyfin Server 12.3 (official v12.3)
 Real Jellyfin Validation: PASS — RJ-01 through RJ-12 / F-08; HTTP only
 Independent B Review: PASS — all four Tasks; final S1.4 re-review
-A Final Review: PENDING
+A Final Review: PASS — independent A review, 2026-10-25; see final review below
 ```
 
 按用户本轮“激活 Slice”要求，本合同及规范性字段补充已激活；Base 保持固定。
@@ -28,7 +28,8 @@ Contract Checkpoint 已从 Git 解析，并由激活后的纯文档提交补记�
 详见该 Task 文末最终审查。S1.2 缓存撤除与 S1.3 字段配置的本地交付均已获独立 B PASS；
 [S1.4 最终真实验证与交接](S1.4-candidate-real-validation-and-handoff.md#b-final-review-result2026-10-25当前有效)
 最终独立 B PASS；RR-1 / RR-2 已补证并由 B 在新真实 12.3 实例重放，全部 Task 通过。
-Closure Packet 已备，Slice 为 READY FOR A REVIEW；A 最终审查 PENDING。
+Closure Packet 及完整实现范围已获独立 A 最终 PASS，Slice 为 PASS / CLOSED；
+决定、验收核对与限制见文末 A Final Review。历轮退回和原始证据保留。
 激活前已有本会话的根 SLICE / TASK 修改、三份未跟踪方案文档及 `artifacts/`；
 激活时只提交前五份合同相关文档，保留既有证据与用户文件。
 
@@ -274,6 +275,8 @@ B 核对完整 Task 范围、真实输入和原始证据，并独立复现前述
 
 ## Closure Packet
 
+本节保留 B 交审时的证据与结论，其中 A PENDING 为当时状态；当前独立 A 决定见文末。
+
 ### 固定输入与 Task 索引
 
 - Slice Base：`6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5`。
@@ -415,21 +418,80 @@ D1 校验器 9 PASS / 1 FAIL（本目录无 baseline results）保留，未冒�
   更正 Content-Length 和测试阈值事实；全部 RO / RJ / F 重评并整理 Closure Packet，固定最终产品 Head，
   撤下根实施指针，Slice READY FOR A REVIEW。合同边界未变，A 最终决定仍 PENDING。
 
+- 2026-10-25：独立 A 审完整 Slice Base..Implementation Head 及交审文档后继，核对四项 B PASS、
+  全部 RO / RJ / F 与原始证据；本轮全套 213 passed，原始记录审计 28 项通过。无 P0 / P1，
+  决定 PASS，Slice PASS / CLOSED；根指针撤下，保留既有 README 修改、全部证据及未运行限制。
+
 ## A Final Review
 
 ```text
-Reviewed Range: NOT SET
-Reviewer / Independence: NOT SET
-Decision: PENDING
-P0 / P1 Blockers: NONE reported by B; A assessment remains PENDING
-Closure Reconciliation: PENDING — packet prepared above
-Next Action: independent A final review of fixed Slice Base..Implementation Head and user outcomes
+Reviewed Range: 6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5..a0cc7cddff32da585923c5ff11d3977ea910d87a
+Document / evidence successors reviewed through: c6a27447e9ce2d802ada6a03d0c014a8f0d19315
+Reviewer / Independence: A — did not implement S1 product, validation tooling or Developer supplements
+Decision: PASS
+P0 / P1 Blockers: NONE
+Closure Reconciliation: PASS — RO-1 through RO-9, RJ-01 through RJ-12, F-01 through F-08
+Slice Status: PASS / CLOSED
+Next Action: NONE — AUTHORIZED WORK COMPLETE
 ```
 
-S1.1～S1.4 均获独立 B PASS，最终产品 Head 与完整证据 / 限制见 Closure Packet。
-Slice 为 READY FOR A REVIEW；只有独立 A 最终 PASS 才能标记 PASS / CLOSED。
-本次 B 状态协调不构成 A 审查或发布，版本仍为未发布 0.9.3，未 push / 发布 / 部署。
+### 审查范围与用户结果（2026-10-25）
+
+从真实 Git 解析并核对固定 Base、激活检查点、四项 Task 的计划 / 实现 / B 审查及祖先关系。
+审查覆盖完整 40 个变更路径及上述文档后继，包括缓存撤除、配置 / 装配、字段服务、直链清理、
+测试、验证工具和文档；没有只审最后一次补证。当前 48 个可执行 / 配置 / 构建输入与最终候选
+逐字节一致（精确清单以本轮 input-identity.json 为准），既有未暂存 README 不作为执行输入。
+本轮只修改审查和收尾文档，不移动 Base / Implementation Head，不改变合同或验收。
+
+| 用户结果 / RO | A 决定与依据 |
+|---|---|
+| RO-1 撤除完整 JSON 缓存 | PASS：模块、装配、键与读写路径均撤除；真实串行 3 / 并发 4 各逐次回源，错误不回放旧成功。 |
+| RO-2 请求及显式修改 | PASS：既有 GET / POST 与认证 / 查询 / 正文独立转发；缺省 / 空表同次上游原字段，显式表只改列出字段，绕过原文。 |
+| RO-3 绕过优先级 | PASS：全局及两分支实际重叠、三类身份头大小写、默认 / 定制配置均有独立 B 证据；Playback bypass 种直链，Video bypass 保持流式代理。 |
+| RO-4 直链与入口 | PASS：最终 Id / Path 驱动 302；query / path / UUID / raw、LRU 与容量保留；真实同 ID 三步失效恢复，第二映射无重种且不受影响。 |
+| RO-5 失败与媒体语义 | PASS：产品直连真实上游的 206、三个 Range 窗口、长度和字节一致；读取后提前断开、源未发送完即释放，后续 Range 成功；401 / 404 / 不可达及恢复成立。 |
+| RO-6 升级与诊断 | PASS：四项旧缓存配置及环境读取、生成缓存头与专属日志撤除；旧值忽略；请求 ID、版本头、清洗与脱敏保留。 |
+| RO-7 真实 12.3 | PASS（HTTP）：运行身份与固定 digest 有原始记录，J / B-on / B-off / C 对照及 RJ-01～12 证据成立；旧前缀 404 如实保留。 |
+| RO-8 独立审查与交接 | PASS：四项独立 B PASS、Closure Packet、完整回归与适用 amd64 构建 / frozen smoke 已核对；本节完成独立 A 决定。Unreleased 与唯一版本来源一致。 |
+| RO-9 字段配置 | PASS：F-01～08；递归启动校验、类型 / 作用域、深复制隔离、覆盖优先级及精确旧 ID 清理均经源码与确定性回归核验，真实默认 / 显式配置媒体闭环成立。 |
+
+架构边界保持：配置校验在 config，装配在 main，字段与映射在 services，HTTP 适配与路由沿用原层；
+产品不导入验证工具，不读取 STRM、不运行 ffprobe、不操作 Jellyfin 数据库。保留策略扩展点，
+应用规则列表为空；不针对没有实际产品配置入口触发的假想规则组合构造阻塞。
+
+### 验证、证据与历史更正
+
+本轮证据：[A review README](../artifacts/validation-evidence/S1/s1-a-final-review-20261025-01/README.md)，
+含输入清单 / 摘要、完整范围补丁、pytest 原始日志、原始记录审计及文档检查；仅本工作区可访问，
+不声称远端上传。此前证据只读保留，未纳入 Git。
+
+- **PASS（本轮新运行）**：`.venv/bin/python -m pytest -q`，213 passed / 1 warning，退出 0，
+  pytest 4.93 s / 进程墙钟 5.668 s。警告为已有 Starlette TestClient 对 httpx 的弃用提示。
+- **PASS（原始记录审计）**：28 项断言，独立核对 B 的 21 项关键路径 / 7 项补证记录、同次认证
+  事务的状态与正文摘要、缺省 / 空表字节一致、Range 逐值相等、真实读到媒体后停止及再次请求。
+  这是既有证据审计，不宣称 A 重新运行了真实服务。
+- **PASS（复用）**：原生 amd64 构建日志与两套 frozen smoke，样例配置摘要符合候选；
+  本轮未重建，未把构建产物的不可复现归档摘要当作源文件变化。
+- **PASS**：Base / 候选祖先关系、工作区及完整实现范围 `git diff --check`；文档链接 / 状态检查
+  结果见本轮证据。测试及检查时间保守上限仍小于本轮审查用时 50%，无空等。
+
+承接并确认 B 的事实更正：早期候选报告的“47/47”不足以证明 RJ-09 或远程停止；
+补证与独立 B 重放才补齐这些缺口。J / C 直连实际保留相同 Content-Length，不能沿用补证说明中
+“C chunked / 无长度”的错误文字。工具观测器的媒体缓冲 / 合成错误、锁重放及校验器范围限制仍
+存在；本次释放 / 不可达结论有产品直连证据，未把工具缺陷冒充产品缺陷，也未将工具校验 FAIL 改成 PASS。
+官方 [v12.3 发布元数据](https://github.com/jellyfin/jellyfin/releases/tag/v12.3) 本轮只读核对；
+服务器实际运行身份由本地 lock / 事务 / 启动记录证明，网页不是运行证据。
+
+### 非阻塞项、未运行项与停止边界
+
+P2：README 的 client_identified 覆盖面修正为用户既有未暂存一行，内容与代码一致；保留原样，
+不暂存、不借收尾扩大改动。测试工具的上述已知限制单列，不要求为关闭产品 Slice 扩建工具。
+真实 Infuse / Kodi / SenPlayer、arm64 / 第二架构构建 **NOT RUN**；HTTP / 受控源记录不扩大为
+实机、第三方 CDN、生产网络或性能保证。畸形 URL 的既有 MediaResolver 异常仍属原非目标。
+
+产品版本保持 version.py 的 0.9.3，变更仍在 Unreleased；本轮不签发新发行、不 push、不发布、
+不部署，也不启动下一 Task。根 TASK / SLICE 恢复无活动入口，四项 Task 的历史与 B 决定保留。
 
 ```text
-Next Action: NONE — AUTHORIZED B WORK COMPLETE; awaiting independent A final review
+Next Action: NONE — AUTHORIZED WORK COMPLETE
 ```

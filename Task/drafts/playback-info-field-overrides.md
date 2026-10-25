@@ -6,7 +6,8 @@
 本补充随 [Slice S1](../S1-remove-playback-info-json-cache.md) 合同 v3 于 2026-10-24 激活，
 属于规范性必交付范围；本地实现及独立 B 审查已由
 [S1.3](../S1.3-playback-info-field-configuration.md)完成，F-08 真实 HTTP 闭环已由
-[S1.4](../S1.4-candidate-real-validation-and-handoff.md)完成并独立 B PASS；A 最终审查仍待。
+[S1.4](../S1.4-candidate-real-validation-and-handoff.md)完成并独立 B PASS；
+[A 最终审查](../S1-remove-playback-info-json-cache.md#a-final-review)于 2026-10-25 独立 PASS，S1 已关闭。
 保持 Slice Base 不变，不将未发布检查点冒充发行。
 
 ## 配置界面
@@ -118,5 +119,5 @@ F-08 的字段 / 绕过 / Id-Path 与本地播放由 S1.4 原始候选证据支�
 再次请求，通过完整 HTTP 播放闭环。S1.4 最终独立 B PASS，F-08 **PASS（HTTP 层）**。
 证据分别为 `artifacts/validation-evidence/S1/s1-4-candidate-20261025-01/`、
 `s1-4-supplement-20261025-01/` 和 `s1-4-b-final-review-20261025-01/`（后两者同一父目录）。
-Slice 为 READY FOR A REVIEW；A Final Review PENDING，实机客户端 NOT RUN。
+Slice 已获独立 A Final Review PASS / CLOSED，实机客户端 NOT RUN。
 本状态协调不改变任何字段合同；历轮失实描述及更正见 S1.4 审查记录。
