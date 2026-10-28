@@ -7,8 +7,8 @@
 BUG-002 的真实客户端、403 与生产部署仍为 NOT RUN。
 
 [S2 合同](Task/S2-video-head-routing-and-logging.md)已于 2026-10-28 激活，状态为 ACTIVE。
-本轮仅完成合同激活与检查点记录；尚未发布 B Task 或开始实施。
-下一流程由 B 基于已提交的 ACTIVE 合同规划首个实施任务。
+当前为按用户“保留底线”要求精简的修订 2；尚未发布 B Task 或开始实施。
+本轮仅修订合同，下一流程由 B 基于修订 2 的已提交 ACTIVE 合同规划实施任务。
 
 ```text
 Next Action: NONE — AUTHORIZED WORK COMPLETE
