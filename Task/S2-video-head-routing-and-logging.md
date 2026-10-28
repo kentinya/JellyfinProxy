@@ -21,7 +21,8 @@ A Final Review: PENDING
 ```
 
 Base 保持规划时的真实源码，产品版本仍为 `1.0.1`，纯文档修订不使 Base 前移。
-当前尚无 B Task 或产品实现。Contract Checkpoint 已从 Git 解析，并由纯文档后继补记；
+B 已发布首个 [S2.1 计划](S2.1-video-request-handling-and-logging.md)，尚未开始产品实施。
+Contract Checkpoint 已从 Git 解析，并由纯文档后继补记；
 后续 B 计划以本修订为准，不以最初激活提交代替当前合同。
 
 ## 用户目标
@@ -129,12 +130,15 @@ B 独立审查完整任务差异及上述结果，保留真实命令、输入身
 
 ## Task 索引
 
-尚未发布 B Task。本合同不预设任务数量、固定拆分或强制串行关系，B 根据实际工作量
-组织可整体审查的行为闭环，可以合并原建议的路由 / HEAD、日志及文档验证工作。
-原 S2.1～S2.3 仅为修订 1 的建议，未成为已提交 B 计划，不再作为当前拆分要求。
+B 按真实调用链将三项结果合并为一个可整体审查的 Task，不预设后续任务。
 
-当前根 [TASK](../TASK.md) 保持无活动实施任务。本轮只修订合同；下一流程是 B 基于
-修订 2 的已提交 ACTIVE 合同规划 Task，不在本轮开始产品实施。
+| Task | 范围与结果映射 | 当前状态 |
+| --- | --- | --- |
+| [S2.1 — 视频请求处理与日志](S2.1-video-request-handling-and-logging.md) | HEAD 透传、GET 保留、精确路由、结果日志及必要回归 / 文档；RO-1～3、AC-1～5 | PLANNED，独立 B 决定 PENDING |
+
+原修订 1 的 S2.1～S2.3 是未发布建议，已由上述实际计划替代。B 在 S2.1 独立 PASS 后
+重评全部 RO：满足则整理 Closure Packet 交 A；有实际缺口才规划修正或下一必要 Task。
+当前根 [TASK](../TASK.md) 指向 S2.1，本轮仅发布计划，不开始产品实施。
 
 ## 修订记录
 
@@ -152,7 +156,7 @@ B 独立审查完整任务差异及上述结果，保留真实命令、输入身
 - 全部 RO 对照与独立 B 决定：PENDING；最终产品验证与证据：NOT RUN / NOT SET。
 - 不变量 / P2 / 延期：待实施与独立审查；无已确认的延期结果。
 - 真实 Jellyfin / 实机客户端 / 打包 / 生产部署：NOT RUN，本次不新增此类操作要求。
-- 文档与状态协调：修订 2，ACTIVE，无活动 Task；最终交付协调 PENDING。
+- 文档与状态协调：修订 2，ACTIVE；当前 Task S2.1 为 PLANNED；最终交付协调 PENDING。
 
 ## A Final Review
 
@@ -165,4 +169,4 @@ Closure Reconciliation: PENDING
 Next Action: NONE — AUTHORIZED WORK COMPLETE
 ```
 
-本轮合同修订授权已完成，不表示产品已实现或验收；后续由 B 规划 Task。
+本轮 B 计划授权已完成，不表示产品已实现或验收；后续由 Developer 按 S2.1 计划进入实施。

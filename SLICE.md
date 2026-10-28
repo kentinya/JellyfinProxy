@@ -6,8 +6,9 @@
 当前采用修订 2：按用户“保留底线”要求精简，三项产品结果不变，
 撤除过细的实现限制和额外验收。原合同历史保留于 Git。
 
-尚未发布 B Task 或开始实施；下一流程由 B 基于已提交的 ACTIVE 合同规划首个 Task。
-本轮仅完成合同修订与检查点记录，不开始产品实施。
+首个 [Task S2.1](Task/S2.1-video-request-handling-and-logging.md) 已发布为 **PLANNED**，
+合并覆盖三项结果与必要回归。尚未开始实施，独立 B / A 决定仍为 PENDING。
+本轮仅完成 B 计划；下一流程交 Developer 按计划实施。
 
 已关闭的
 [S1 合同与 A 最终审查](Task/archive/S1-remove-playback-info-json-cache.md#a-final-review)
