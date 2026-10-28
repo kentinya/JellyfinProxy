@@ -1,14 +1,15 @@
 # Slice S2 — 视频 HEAD 透传、GET/HEAD 处理日志与精确路由
 
 遵循[开发流程](../docs/development-workflow.md)和 [Slice 模板](SLICE_TEMPLATE.md)。
-本轮用户要求规划一个 Slice，包含 HEAD 透传、视频请求日志和视频路由收紧三项结果。
-本文件为完整规划；尚未激活、发布 B Task 或开始产品实施。
+用户要求规划一个 Slice，包含 HEAD 透传、视频请求日志和视频路由收紧三项结果，
+并于 2026-10-28 明确授权激活。本合同现为 ACTIVE；尚未发布 B Task 或开始产品实施。
 
 ```text
 Slice ID: S2
 Owner: A
-Status: PLANNED
+Status: ACTIVE
 Planned On: 2026-10-28
+Activated On: 2026-10-28
 Contract Revision: 1
 Base SHA: 3f997b53128305dd4e25b616b0794408ffefa859
 Contract Checkpoint: NOT SET
@@ -18,9 +19,11 @@ Independent B Review: PENDING
 A Final Review: PENDING
 ```
 
-Base 为规划时实际源码，产品版本为 `1.0.1`；不随纯文档提交前移。激活前核对源码
-是否变化，若需调整基线，由 A 记录修订理由。`Contract Checkpoint` 专指已提交的
-ACTIVE 合同，本次 PLANNED 文档提交不充当实施准入检查点。
+Base 为规划时实际源码，产品版本为 `1.0.1`；不随纯文档提交前移。激活前已核对
+Base 至当前 HEAD 仅有 S2 规划文档变更，产品源码未变化，Base 保持固定。
+`Contract Checkpoint` 指已提交的 ACTIVE 合同，由激活提交产生后从 Git 解析，
+以纯文档后继补记，避免自引用 SHA。原 PLANNED 提交保留为规划历史。
+本次激活沿用规划中的三项 RO、细化边界和验收要求，仅更新生命周期状态。
 
 ## 用户目标
 
@@ -186,7 +189,7 @@ r"/(?ai:videos)/(?P<item_id>[^/]+)/(?ai:stream)(?:\.(?P<container>[^/.]+))?"
   不增加直链探测、媒体下载或服务器端跟随重定向。
 - 保持流式代理、Range / 条件请求、表示头、上游响应释放及有界内存；不缓存完整视频。
 - 不增加新配置、依赖、日志平台、统计接口、缓存状态历史或其他视频入口。
-- 本次仅规划；不修改产品代码、版本和发布说明中的已发布行为。实施后由对应 Task
+- 规划与激活阶段仅维护合同，不修改产品代码、版本和发布说明中的已发布行为。实施后由对应 Task
   同步 README、配置行为文档和 CHANGELOG；版本唯一来源为 `version.py`，具体功能版本
   在实施 Task 确定，不因此自动发布、push、打标签或部署。
 - 工作开始时只有未跟踪 `artifacts/`；保留全部既有用户文件和证据，不纳入本次提交。
@@ -236,7 +239,7 @@ r"/(?ai:videos)/(?P<item_id>[^/]+)/(?ai:stream)(?:\.(?P<container>[^/.]+))?"
 ## Task 索引
 
 以下是 A 建议的三个行为闭环，尚非 B 计划；不预设后续 Base、实现 Head 或审查结论。
-B 在合同激活后根据真实前序结果逐项规划，可以在不改变 RO 的前提下调整划分。
+B 下一步依据本 ACTIVE 合同及真实前序结果逐项规划，可以在不改变 RO 的前提下调整划分。
 
 | 建议顺序 | 行为闭环 | 依赖与结果 | 当前状态 |
 | --- | --- | --- | --- |
@@ -244,17 +247,17 @@ B 在合同激活后根据真实前序结果逐项规划，可以在不改变 RO
 | S2.2 | 所有视频 GET/HEAD 分支的结果日志 | S2.1 独立 B PASS；RO-2，包含绕过、错误、并发和脱敏 | 未发布 B 计划 |
 | S2.3 | 最终候选整体验证、迁移文档与版本协调 | 前序独立 B PASS；重评全部 RO，完成 T4 / HTTP 证据及 Closure Packet | 未发布 B 计划 |
 
-当前根 [TASK](../TASK.md) 保持无活动实施任务。本轮规划完成后停止；后续先激活并提交
-合同，再交 B 发布首个 Task，不在本轮代替 B 规划或 Developer 实施。
+当前根 [TASK](../TASK.md) 保持无活动实施任务。本轮完成合同激活与检查点记录后停止；
+后续交 B 规划并提交首个 Task，不在本轮代替 B 规划或 Developer 实施。
 
 ## Closure Packet
 
 - Base：`3f997b53128305dd4e25b616b0794408ffefa859`；Implementation Head：NOT SET。
 - 全部 RO 对照与独立 B 决定：PENDING。
-- 最终检查 / 原始证据 / 复用依据：NOT SET；产品验证 NOT RUN（本轮仅规划）。
+- 最终检查 / 原始证据 / 复用依据：NOT SET；产品验证 NOT RUN（仅完成规划与激活）。
 - 不变量 / P2 / 延期：待实施与独立审查；没有已确认的延期结果。
-- 真实 Jellyfin / 实机客户端 / 打包 / 生产部署：NOT RUN，不属本轮规划执行范围。
-- 文档与状态协调：当前为 PLANNED，无活动 Task；最终交付协调 PENDING。
+- 真实 Jellyfin / 实机客户端 / 打包 / 生产部署：NOT RUN，不属本轮激活执行范围。
+- 文档与状态协调：当前为 ACTIVE，无活动 Task；最终交付协调 PENDING。
 
 ## A Final Review
 
@@ -267,5 +270,5 @@ Closure Reconciliation: PENDING
 Next Action: NONE — AUTHORIZED WORK COMPLETE
 ```
 
-以上 Next Action 仅表示本轮规划授权已完成，不表示 Slice 已实施或验收。
-未来移交：激活 S2 合同后，由 B 规划首个 Task；实施及独立审查结论均待后续实际产生。
+以上 Next Action 仅表示本轮激活授权已完成，不表示 Slice 已实施或验收。
+未来移交：由 B 基于已提交的 ACTIVE 合同规划首个 Task；实施及独立审查结论均待后续实际产生。

@@ -6,8 +6,9 @@
 已完成 Task 见[历史任务与合同](Task/archive/README.md)，Slice 状态见 [SLICE](SLICE.md)。
 BUG-002 的真实客户端、403 与生产部署仍为 NOT RUN。
 
-本轮已完成 [S2 合同规划](Task/S2-video-head-routing-and-logging.md)，状态为 PLANNED。
-尚未激活合同或发布 B Task；后续先激活并提交合同，再由 B 规划首个实施任务。
+[S2 合同](Task/S2-video-head-routing-and-logging.md)已于 2026-10-28 激活，状态为 ACTIVE。
+本轮仅完成合同激活与检查点记录；尚未发布 B Task 或开始实施。
+下一流程由 B 基于已提交的 ACTIVE 合同规划首个实施任务。
 
 ```text
 Next Action: NONE — AUTHORIZED WORK COMPLETE

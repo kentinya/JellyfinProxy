@@ -1,9 +1,12 @@
-# NO ACTIVE SLICE
+# ACTIVE SLICE — S2
 
-当前没有活动 Slice。已规划
+当前活动合同为
 [S2 — 视频 HEAD 透传、GET/HEAD 处理日志与精确路由](Task/S2-video-head-routing-and-logging.md)，
-状态为 **PLANNED**；本轮仅完成合同规划，尚未激活或开始实施。
-后续先激活并提交 S2 合同，再由 B 规划 Task。
+状态为 **ACTIVE**，激活日期为 2026-10-28。Base 保持规划时的真实源码基线，
+三项结果、细化边界和验收要求沿用原规划。
+
+尚未发布 B Task 或开始实施；下一流程由 B 基于已提交的 ACTIVE 合同规划首个 Task。
+本轮仅完成合同激活与检查点记录。
 
 已关闭的
 [S1 合同与 A 最终审查](Task/archive/S1-remove-playback-info-json-cache.md#a-final-review)
