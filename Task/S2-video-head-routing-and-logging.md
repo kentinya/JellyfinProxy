@@ -12,7 +12,7 @@ Planned On: 2026-10-28
 Activated On: 2026-10-28
 Contract Revision: 1
 Base SHA: 3f997b53128305dd4e25b616b0794408ffefa859
-Contract Checkpoint: NOT SET
+Contract Checkpoint: a15355e1c6ae6e602d69a0dacfa0f3ff743b2f1b
 Implementation Head: NOT SET
 Required Test Level: T4
 Independent B Review: PENDING
@@ -21,8 +21,8 @@ A Final Review: PENDING
 
 Base 为规划时实际源码，产品版本为 `1.0.1`；不随纯文档提交前移。激活前已核对
 Base 至当前 HEAD 仅有 S2 规划文档变更，产品源码未变化，Base 保持固定。
-`Contract Checkpoint` 指已提交的 ACTIVE 合同，由激活提交产生后从 Git 解析，
-以纯文档后继补记，避免自引用 SHA。原 PLANNED 提交保留为规划历史。
+`Contract Checkpoint` 指已提交的 ACTIVE 合同，已从 Git 解析，
+由本纯文档后继补记，避免自引用 SHA。原 PLANNED 提交保留为规划历史。
 本次激活沿用规划中的三项 RO、细化边界和验收要求，仅更新生命周期状态。
 
 ## 用户目标
