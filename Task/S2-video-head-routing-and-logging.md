@@ -13,7 +13,7 @@ Activated On: 2026-10-28
 Contract Revision: 2 — retain essential outcomes and acceptance
 Revised On: 2026-10-28
 Base SHA: 3f997b53128305dd4e25b616b0794408ffefa859
-Contract Checkpoint: NOT SET
+Contract Checkpoint: 88b5c25e40b2c4ee1139ed4458cc303e949666cb
 Implementation Head: NOT SET
 Required Test Level: T4 — related tests and existing full regression; additional checks by actual impact
 Independent B Review: PENDING
@@ -21,7 +21,7 @@ A Final Review: PENDING
 ```
 
 Base 保持规划时的真实源码，产品版本仍为 `1.0.1`，纯文档修订不使 Base 前移。
-当前尚无 B Task 或产品实现。本次修订提交后，从 Git 解析并补记新的 Contract Checkpoint，
+当前尚无 B Task 或产品实现。Contract Checkpoint 已从 Git 解析，并由纯文档后继补记；
 后续 B 计划以本修订为准，不以最初激活提交代替当前合同。
 
 ## 用户目标
