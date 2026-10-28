@@ -898,6 +898,35 @@ def test_create_app_danmu_raw_forwards_range_auth_and_ignores_bypass_lists(clien
     assert "location" not in response.headers
 
 
+def test_create_app_danmu_raw_forwards_percent_encoded_path_and_query() -> None:
+    path = "/api/danmu/source%20id/raw"
+    query = "MediaSourceId=source%2Did&api_key=secret%2Bvalue"
+
+    def responder(request: Request, transaction: int, *, stream: bool):
+        seed = _seed_media_mapping(request)
+        if seed is not None:
+            return seed
+        assert stream
+        return 404, {"content-type": "text/plain"}, b"encoded raw"
+
+    app, patcher = _app_with_scripted_upstream(responder)
+    try:
+        with TestClient(app) as client:
+            assert client.post("/Items/source-id/PlaybackInfo").status_code == 200
+            response = client.get(f"{path}?{query}", follow_redirects=False)
+    finally:
+        patcher.stop()
+
+    upstream = app.state.dispatcher._proxy._http_client  # type: ignore[attr-defined]
+    assert len(upstream.stream_calls) == 1
+    forwarded = upstream.stream_calls[0]
+    assert forwarded.scope["raw_path"].decode("latin-1") == path
+    assert forwarded.scope["query_string"].decode("latin-1") == query
+    assert response.status_code == 404
+    assert response.content == b"encoded raw"
+    assert "location" not in response.headers
+
+
 def test_create_app_playback_upstream_error_is_not_replayed_from_success() -> None:
     calls = {"n": 0}
 
