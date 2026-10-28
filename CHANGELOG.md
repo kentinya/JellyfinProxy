@@ -7,6 +7,25 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## Unreleased
+
+- Video `HEAD` requests to `/Videos/{id}/stream` and
+  `/Videos/{id}/stream.{container}` are now forwarded to Jellyfin with the
+  original `HEAD` method. They no longer look up a cached media source mapping
+  or return a video `302`; upstream status and applicable response headers are
+  preserved without a response body. `GET` redirect, fallback, invalidation and
+  recovery behaviour is unchanged.
+- Video special handling is now limited to `GET` / `HEAD` on the two exact
+  stream path formats. `Videos` and `stream` remain case-insensitive, and
+  multi-dot containers such as `stream.mp4.extra` are accepted. Other paths,
+  including the legacy `/video/...`, `master.m3u8`, HLS, subtitle and danmu raw
+  entries, are transparently proxied even when they carry a valid
+  `MediaSourceId`; other methods no longer enter the video handler either.
+- Video `GET` / `HEAD` requests now log the actual handling (`redirect` or
+  `proxy`), mapping result (`hit`, `miss` or `not_queried`) and response status.
+  Video bypass is covered, and the new records do not contain query parameters,
+  cookies or media redirect URLs.
+
 ## 1.0.1 - 2026-10-28
 
 - Removed the danmu raw video special case. `/api/danmu/{id}/raw` and

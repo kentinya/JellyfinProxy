@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from re import Pattern, compile
+from re import IGNORECASE, Pattern, compile
 
 
 class HandlerType(str, Enum):
@@ -30,8 +30,12 @@ ROUTE_RULES: tuple[RouteRule, ...] = (
     ),
     RouteRule(
         name="video",
-        pattern=compile(r"^(?:/[Vv]ideos/[^/]+|/video)(?:/.*)?$", flags=0),
+        pattern=compile(
+            r"^/videos/[^/]+/stream(?:\.[^/]+)?$",
+            flags=IGNORECASE,
+        ),
         handler_type=HandlerType.VIDEO,
+        methods=frozenset({"GET", "HEAD"}),
     ),
     RouteRule(name="default", pattern=compile(r".*", flags=0), handler_type=HandlerType.DEFAULT),
 )

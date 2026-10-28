@@ -11,7 +11,7 @@
 ## ✨ 功能
 
 - **远程媒体直连**：利用 Jellyfin 返回的 HTTP(S) 媒体地址，减少代理中转。
-- **流式回退**：直链未命中或客户端选择绕过时，透明代理媒体，保留 Range 等响应语义。
+- **HEAD 透传与流式回退**：HEAD 始终按原方法回源 Jellyfin；GET 直链未命中或客户端选择绕过时，透明代理媒体，保留 Range 等响应语义。
 - **按客户端控制**：可分别关闭播放信息修改、视频重定向，也可一起绕过。
 - **按字段配置**：通过 TOML 覆盖 PlaybackInfo 字段，默认保留 Jellyfin 的字段值。
 - **请求日志**：应用日志与访问日志分开，支持请求 ID、认证查询参数脱敏和文件轮转。
@@ -133,6 +133,16 @@ SupportsTranscoding = false
 
 这些配置只改变响应中的字段值，实际播放与转码能力仍取决于 Jellyfin 和客户端。
 根字段覆盖、类型和作用范围见 [PlaybackInfo 字段覆盖](docs/configuration.md#playbackinfo-字段覆盖)。
+
+## 🔄 未发布变更
+
+- 视频 `HEAD` 请求（`/Videos/{id}/stream` 与 `/Videos/{id}/stream.{container}`）始终按
+  HEAD 透传 Jellyfin，不再查询直链映射或返回 302；GET 的直链命中、回退和失效恢复不变。
+- 视频直链特殊处理只作用于上述两种路径的 GET / HEAD，`Videos` 与 `stream` 不区分大小写；
+  `/video/...`、`master.m3u8`、HLS、字幕及其他子路径改为普通代理，即使携带
+  `MediaSourceId` 也不会产生视频 302。
+- 视频 GET / HEAD 会在应用日志中记录实际处理方式、映射命中情况和响应状态；新增日志
+  不记录查询参数、Cookie 或直链地址。
 
 ## 🔄 从 1.0.0 升级到 1.0.1
 

@@ -61,7 +61,16 @@ class Dispatcher:
                 "route_selected handler=proxy reason=client_bypass route=%s",
                 handler_type.value,
             )
-            return await self._proxy.handle(request)
+            response = await self._proxy.handle(request)
+            if handler_type is HandlerType.VIDEO:
+                logger.info(
+                    "video_request_result method=%s path=%s handling=proxy mapping=not_queried "
+                    "status=%d reason=client_bypass",
+                    request.method,
+                    request.url.path,
+                    response.status_code,
+                )
+            return response
 
         logger.debug("route_selected handler=%s", handler_type.value)
         if handler_type is HandlerType.PLAYBACK:

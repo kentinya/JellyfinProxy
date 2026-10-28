@@ -979,15 +979,272 @@ def test_routes_cover_playback_and_video_variants() -> None:
     for path in (
         "/Videos/id/stream",
         "/Videos/id/stream.mp4",
-        "/Videos/id/master.m3u8",
-        "/Videos/id/hls/a.ts",
         "/videos/788be25df9307eb419a2316de9f9d699/stream.mkv",
-        "/video",
-        "/video/stream/movie.mkv",
     ):
         assert router.match(path, "GET") is HandlerType.VIDEO
-    assert router.match("/Video/stream/movie.mkv", "GET") is HandlerType.DEFAULT
-    assert router.match("/videography", "GET") is HandlerType.DEFAULT
+        assert router.match(path, "HEAD") is HandlerType.VIDEO
+    for path in (
+        "/Videos/id/master.m3u8",
+        "/Videos/id/hls/a.ts",
+        "/video",
+        "/video/stream/movie.mkv",
+        "/Video/stream/movie.mkv",
+        "/videography",
+    ):
+        assert router.match(path, "GET") is HandlerType.DEFAULT
+    assert router.match("/Videos/id/stream", "POST") is HandlerType.DEFAULT
+
+
+@pytest.mark.parametrize("path", [
+    "/Videos/id/stream",
+    "/Videos/id/stream.mp4",
+    "/videos/id/stream.mp4.extra",
+    "/VIDEOS/id/STREAM.MKV",
+])
+def test_s2_1_router_accepts_stream_formats_for_get_and_head(path) -> None:
+    assert Router().match(path, "GET") is HandlerType.VIDEO
+    assert Router().match(path, "HEAD") is HandlerType.VIDEO
+
+
+@pytest.mark.parametrize("path", [
+    "/Videos/id/stream/",
+    "/Videos//stream",
+    "/Videos/id/stream.",
+    "/Videos/id/stream/extra",
+    "/Videos/id/master.m3u8",
+    "/Videos/id/hls/a.ts",
+    "/Videos/id/Subtitles/1/Stream.srt",
+    "/video/stream/movie.mkv",
+    "/emby/Videos/id/stream",
+])
+def test_s2_1_router_rejects_other_or_incomplete_entries(path) -> None:
+    assert Router().match(path, "GET") is HandlerType.DEFAULT
+    assert Router().match(path, "HEAD") is HandlerType.DEFAULT
+
+
+@pytest.mark.parametrize("method", ["POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+def test_s2_1_router_keeps_other_methods_out_of_video(method) -> None:
+    assert Router().match("/Videos/id/stream", "GET") is HandlerType.VIDEO
+    assert Router().match("/Videos/id/stream", method) is HandlerType.DEFAULT
+
+
+@pytest.mark.parametrize("path", [
+    "/Videos/source-id/stream",
+    "/videos/source-id/stream.mkv",
+    "/VIDEOS/source-id/STREAM.mp4.extra",
+])
+def test_s2_1_create_app_head_forwards_upstream_without_mapping_lookup(path) -> None:
+    def responder(request: Request, transaction: int, *, stream: bool):
+        seed = _seed_media_mapping(request)
+        if seed is not None:
+            return seed
+        assert stream
+        assert request.method == "HEAD"
+        return 200, {
+            "content-type": "video/mp4",
+            "content-length": "12345",
+            "accept-ranges": "bytes",
+        }, b""
+
+    app, patcher = _app_with_scripted_upstream(responder)
+    try:
+        with TestClient(app) as client:
+            assert client.post("/Items/source-id/PlaybackInfo").status_code == 200
+            cache = app.state.dispatcher._video._media_source_cache  # type: ignore[attr-defined]
+            with patch.object(cache, "get", wraps=cache.get) as cache_get:
+                response = client.head(
+                    path,
+                    params={"MediaSourceId": "source-id"},
+                    headers={"range": "bytes=0-"},
+                    follow_redirects=False,
+                )
+            assert cache_get.call_count == 0
+    finally:
+        patcher.stop()
+
+    upstream = app.state.dispatcher._proxy._http_client  # type: ignore[attr-defined]
+    assert len(upstream.stream_calls) == 1
+    forwarded = upstream.stream_calls[0]
+    assert forwarded.method == "HEAD"
+    assert forwarded.url.path == path
+    assert forwarded.url.query == "MediaSourceId=source-id"
+    assert forwarded.headers["range"] == "bytes=0-"
+    assert response.status_code == 200
+    assert response.content == b""
+    assert response.headers["content-length"] == "12345"
+    assert response.headers["content-type"] == "video/mp4"
+    assert response.headers["accept-ranges"] == "bytes"
+    assert "location" not in response.headers
+    assert upstream.streams[0].closed
+
+
+@pytest.mark.parametrize(("status", "headers", "body"), [
+    pytest.param(
+        302,
+        {"location": "https://jellyfin.example/upstream-redirect"},
+        b"",
+        id="upstream-302",
+    ),
+    pytest.param(404, {"content-type": "text/plain"}, b"not-found", id="upstream-404"),
+])
+def test_s2_1_create_app_head_preserves_upstream_redirect_and_error(
+    status, headers, body
+) -> None:
+    def responder(request: Request, transaction: int, *, stream: bool):
+        seed = _seed_media_mapping(request)
+        if seed is not None:
+            return seed
+        assert stream
+        assert request.method == "HEAD"
+        return status, headers, body
+
+    app, patcher = _app_with_scripted_upstream(responder)
+    try:
+        with TestClient(app) as client:
+            assert client.post("/Items/source-id/PlaybackInfo").status_code == 200
+            cache = app.state.dispatcher._video._media_source_cache  # type: ignore[attr-defined]
+            with patch.object(cache, "get", wraps=cache.get) as cache_get:
+                response = client.head(
+                    "/Videos/source-id/stream",
+                    params={"MediaSourceId": "source-id"},
+                    follow_redirects=False,
+                )
+            assert cache_get.call_count == 0
+    finally:
+        patcher.stop()
+
+    upstream = app.state.dispatcher._proxy._http_client  # type: ignore[attr-defined]
+    assert len(upstream.stream_calls) == 1
+    assert upstream.stream_calls[0].method == "HEAD"
+    assert response.status_code == status
+    assert response.content == b""
+    if status == 302:
+        assert response.headers["location"] == headers["location"]
+    else:
+        assert "location" not in response.headers
+    for name, value in headers.items():
+        assert response.headers[name] == value
+    assert upstream.streams[0].closed
+
+
+@pytest.mark.parametrize("path", [
+    "/video/stream/movie.mkv",
+    "/Videos/source-id/master.m3u8",
+    "/Videos/source-id/hls/a.ts",
+    "/Videos/source-id/Subtitles/1/Stream.srt",
+    "/Videos/source-id/stream/",
+    "/Videos/source-id/stream.",
+])
+def test_s2_1_create_app_excluded_paths_proxy_with_valid_mapping(path) -> None:
+    def responder(request: Request, transaction: int, *, stream: bool):
+        seed = _seed_media_mapping(request)
+        if seed is not None:
+            return seed
+        assert stream
+        assert request.method == "GET"
+        return 404, {"content-type": "text/plain"}, b"upstream pass-through"
+
+    app, patcher = _app_with_scripted_upstream(responder)
+    try:
+        with TestClient(app) as client:
+            assert client.post("/Items/source-id/PlaybackInfo").status_code == 200
+            cache = app.state.dispatcher._video._media_source_cache  # type: ignore[attr-defined]
+            with patch.object(cache, "get", wraps=cache.get) as cache_get:
+                response = client.get(
+                    path,
+                    params={"MediaSourceId": "source-id"},
+                    follow_redirects=False,
+                )
+            assert cache_get.call_count == 0
+    finally:
+        patcher.stop()
+
+    upstream = app.state.dispatcher._proxy._http_client  # type: ignore[attr-defined]
+    assert len(upstream.stream_calls) == 1
+    assert upstream.stream_calls[0].method == "GET"
+    assert upstream.stream_calls[0].url.path == path
+    assert upstream.stream_calls[0].url.query == "MediaSourceId=source-id"
+    assert response.status_code == 404
+    assert response.content == b"upstream pass-through"
+    assert "location" not in response.headers
+
+
+@pytest.mark.parametrize(("client_name", "settings"), [
+    pytest.param(
+        "VideoBypassClient",
+        {"video_bypass_clients": ("VideoBypassClient",)},
+        id="video-bypass",
+    ),
+    pytest.param(
+        "GlobalBypassClient",
+        {"bypass_clients": ("GlobalBypassClient",)},
+        id="global-bypass",
+    ),
+])
+def test_s2_1_create_app_video_bypass_proxies_with_valid_mapping(client_name, settings) -> None:
+    def responder(request: Request, transaction: int, *, stream: bool):
+        seed = _seed_media_mapping(request)
+        if seed is not None:
+            return seed
+        assert stream
+        assert request.method == "GET"
+        return 206, {"content-range": "bytes 0-8/100"}, b"media-bytes"
+
+    app, patcher = _app_with_scripted_upstream(responder, **settings)
+    try:
+        with TestClient(app) as client:
+            assert client.post("/Items/source-id/PlaybackInfo").status_code == 200
+            cache = app.state.dispatcher._video._media_source_cache  # type: ignore[attr-defined]
+            with patch.object(cache, "get", wraps=cache.get) as cache_get:
+                response = client.get(
+                    "/Videos/source-id/stream.mkv",
+                    params={"MediaSourceId": "source-id"},
+                    headers={"x-emby-client": client_name},
+                    follow_redirects=False,
+                )
+            assert cache_get.call_count == 0
+    finally:
+        patcher.stop()
+
+    upstream = app.state.dispatcher._proxy._http_client  # type: ignore[attr-defined]
+    assert len(upstream.stream_calls) == 1
+    assert response.status_code == 206
+    assert response.content == b"media-bytes"
+    assert response.headers["content-range"] == "bytes 0-8/100"
+    assert "location" not in response.headers
+
+
+def test_s2_1_create_app_stream_path_other_method_is_plain_proxy() -> None:
+    def responder(request: Request, transaction: int, *, stream: bool):
+        seed = _seed_media_mapping(request)
+        if seed is not None:
+            return seed
+        assert stream
+        assert request.method == "POST"
+        return 200, {"content-type": "text/plain"}, b"post pass-through"
+
+    app, patcher = _app_with_scripted_upstream(responder)
+    try:
+        with TestClient(app) as client:
+            assert client.post("/Items/source-id/PlaybackInfo").status_code == 200
+            cache = app.state.dispatcher._video._media_source_cache  # type: ignore[attr-defined]
+            with patch.object(cache, "get", wraps=cache.get) as cache_get:
+                response = client.post(
+                    "/Videos/source-id/stream",
+                    params={"MediaSourceId": "source-id"},
+                    content=b"payload",
+                    follow_redirects=False,
+                )
+            assert cache_get.call_count == 0
+    finally:
+        patcher.stop()
+
+    upstream = app.state.dispatcher._proxy._http_client  # type: ignore[attr-defined]
+    assert len(upstream.stream_calls) == 1
+    assert upstream.stream_calls[0].method == "POST"
+    assert response.status_code == 200
+    assert response.content == b"post pass-through"
+    assert "location" not in response.headers
 
 
 @pytest.mark.parametrize("method", ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])

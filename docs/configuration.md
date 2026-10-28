@@ -117,8 +117,9 @@ SupportsDirectPlay = true
 
 1. 客户端通过代理请求 PlaybackInfo，每次请求都会转发到 Jellyfin。
 2. 代理从响应中记录有效的 `MediaSource.Id → Path`；按客户端策略决定是否应用字段覆盖。
-3. 后续视频请求找到对应直链且未命中 Video 绕过策略时，返回 `302`，由客户端访问媒体地址。
-4. 视频请求没有直链或选择绕过时，透明代理到 Jellyfin。
+3. 后续视频 `GET` 请求找到对应直链且未命中 Video 绕过策略时，返回 `302`，由客户端访问媒体地址。
+4. `HEAD` 视频请求始终按原方法透传 Jellyfin，不查询直链。视频 `GET` 没有直链或选择
+   绕过时，透明代理到 Jellyfin；不合规路径同样普通代理。
 
 媒体响应采用异步流式传输，不会把完整视频加载到内存；保留 Range、Content-Range、
 Content-Length、Content-Encoding 等媒体响应语义。
@@ -129,12 +130,21 @@ Content-Length、Content-Encoding 等媒体响应语义。
 | --- | --- |
 | `GET` / `POST` `/Items/{id}/PlaybackInfo` | 获取播放信息、记录直链、按配置覆盖字段 |
 | `GET` / `POST` `/emby/Items/{id}/PlaybackInfo` | 同上 |
-| `/Videos/{id}/...`、`/videos/{id}/...`、`/video/...` | 优先按媒体源 ID 查找直链，未命中则代理 |
+| `GET` `/Videos/{id}/stream`、`GET` `/Videos/{id}/stream.{container}` | 优先按媒体源 ID 查找直链，未命中则代理 |
+| `HEAD` 上述两种 stream 路径 | 按 HEAD 透传 Jellyfin，不查询直链 |
 | `/emby/api/danmu/{id}/raw`、`/api/danmu/{id}/raw` | 普通代理到 Jellyfin，不使用视频直链映射 |
 
-视频请求优先使用非空的 `MediaSourceId`，其次为 `mediaSourceId`。两者都没有时，
-`/Videos/{id}/...`、`/videos/{id}/...` 尝试使用路径中的 ID；该 ID 需要匹配已记录的
-媒体源 ID。32 位 UUID 的带连字符和无连字符格式视为同一 ID。
+视频直链特殊处理只覆盖上表两种 stream 路径的 `GET` / `HEAD`，`Videos` 与 `stream`
+不区分大小写。`{id}` 和 `{container}` 都必须是非空单一路径段；`stream.mp4.extra`
+这类带多个点的 container 也属于合法入口，本代理不判断该容器能否播放。
+
+`/Videos/{id}/...` 的其他子路径（例如 `master.m3u8`、HLS、字幕）、旧的 `/video/...`、
+前缀、尾随斜杠和额外路径段均按普通代理转发，不查直链。即使这些路径携带已命中的
+`MediaSourceId`，也不会返回视频 `302`。
+
+视频 `GET` 请求优先使用非空的 `MediaSourceId`，其次为 `mediaSourceId`。两者都没有时，
+使用 stream 路径中的 ID；该 ID 需要匹配已记录的媒体源 ID。32 位 UUID 的带连字符和
+无连字符格式视为同一 ID。`HEAD` 不执行这一查找，始终回源。
 
 两个 danmu raw 入口不属于视频直链入口：即使存在同 ID 的映射，也始终代理到 Jellyfin。
 上游返回的状态、正文和适用的 `Content-Type` / `Location` 按普通 HTTP 代理转发。
@@ -165,6 +175,11 @@ PlaybackInfo 和 Video 请求会在应用日志中产生 `client_identified` 记
 客户端名称、设备名称、设备 ID、User-Agent 以及最终选择的 `modify` 或 `bypass` 动作。
 客户端字段会清理控制字符并限制长度。
 
+合法视频 GET / HEAD 还会记录处理结果：处理方式（直链跳转或 Jellyfin 透传）、映射
+命中情况（命中、未命中或未查询）和实际响应状态。视频 HEAD 与 Video 绕过不会查询
+直链，因此显示为未查询；视频 GET 未命中后即使 Jellyfin 自身返回 302，也不会记录为
+直链命中。这些记录沿用请求 ID 关联，不包含查询参数、Cookie 或直链地址。
+
 应用请求日志不记录查询参数、请求体或认证请求头；访问日志中的 API key、token 等认证
 查询参数会脱敏。访问日志格式参考 MediaWarp，与应用日志分开写入。
 
@@ -176,6 +191,14 @@ PlaybackInfo 和 Video 请求会在应用日志中产生 `client_identified` 记
 # 源码运行时：
 .venv/bin/python main.py --version
 ```
+
+## 未发布变更
+
+视频 `HEAD` 请求现在始终按原方法透传 Jellyfin，不查询直链或返回 302。视频直链
+特殊处理只作用于 `/Videos/{id}/stream` 与 `/Videos/{id}/stream.{container}` 的
+GET / HEAD；`/video/...`、`master.m3u8`、HLS、字幕等路径改为普通代理。视频
+GET / HEAD 的处理方式、映射命中情况和响应状态会写入应用日志，且不记录查询参数、
+Cookie 或直链地址。
 
 ## 从 1.0.0 升级到 1.0.1
 
