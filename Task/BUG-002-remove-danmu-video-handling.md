@@ -7,10 +7,10 @@
 Task ID: BUG-002
 Work Type: BUGFIX
 Parent Slice: N/A — standalone bug
-Status: PLANNED
+Status: IN PROGRESS
 Task Base: e4695d81596642363be8219441037da881f8a1ff
 Contract Checkpoint: N/A — standalone bug
-Plan Checkpoint: NOT SET
+Plan Checkpoint: e10e1b66f2bb04bb62dff7df40ff93faea27570b
 Implementation Head: NOT SET
 Difficulty: Medium
 Test Level: T4
@@ -29,8 +29,17 @@ Planner / Reviewer: B
 Emby / SenPlayer 视频请求兼容，不将其引入历史改写成误实现；也不将本次删除认定为
 SenPlayer 403 的根因修复。关闭弹幕后仍失败、直连成功等调查结果不改变本次明确范围。
 
-**本轮只登记计划，不实施产品变更。** 后续获得实施授权后，Developer 从 Git 解析
-本计划的真实提交填写 Plan Checkpoint；Task Base 不因规划提交前移。
+首次登记仅规划；用户随后明确要求激活 Task，现可按本合同进入实施阶段。
+本次激活只完成准入核对和状态登记，尚未实施产品变更。Plan Checkpoint 从 Git 解析为
+已提交计划 `e10e1b66f2bb04bb62dff7df40ff93faea27570b`；Task Base 保持不变。
+
+### 激活记录（2026-10-28）
+
+- Status：`PLANNED → IN PROGRESS`，依据用户“激活 Task”指令。
+- 准入核对：计划提交真实存在，Task Base 为其祖先，根 TASK 与本计划一致；跟踪文件
+  无未提交改动，原有未跟踪 `artifacts/` 保留。
+- 本次检查：文档链接、状态 / 检查点一致性及 `git diff --check`；产品修复测试 NOT RUN。
+- 下一步：Developer 按已激活合同实施和隔离验证；部署、生产配置、服务与防火墙仍不在范围。
 
 ## 现状与行为合同
 
@@ -96,7 +105,7 @@ VideoHandler 证明分流。默认调用链已不把 raw 交给 VideoHandler，�
 ## 必要测试
 
 移除已有播放兼容入口并调整路由、HTTP 集成和既有验证矩阵，按 T4 保留全部回归及
-适用的隔离运行验证。规划文档本轮只做 T0 检查，不运行产品修复测试。
+适用的隔离运行验证。计划登记和本次激活只做 T0 检查；产品修复测试在实施时执行。
 
 ### 开发 / 修正反馈
 
@@ -140,7 +149,7 @@ git diff --check
 
 ## 非目标和环境边界
 
-- 本轮只建立计划，不开始实现，不创建子代理。
+- 按已激活合同实施，不创建子代理；本次激活提交只更新任务文档，不包含产品实现。
 - 不再调查或承诺修复本次 403，不恢复之前已删除的 Task 或提交。
 - 不移除真正视频入口，不改缓存、PlaybackInfo 字段或客户端绕过的原有合同。
 - 不读取 STRM、运行 ffprobe、操作 Jellyfin 数据库或安装插件。
@@ -150,11 +159,11 @@ git diff --check
 
 ## Developer Completion Report
 
-- Changed Files / Implemented：NOT RUN — 当前仅规划。
+- Changed Files / Implemented：NOT RUN — 已激活，产品实现尚未开始。
 - Acceptance Mapping：PENDING。
-- Tests and Results / Evidence：修复测试 NOT RUN；本轮只检查规划文档。
+- Tests and Results / Evidence：修复测试 NOT RUN；本次只检查任务文档和实施准入。
 - Decisions / Risks / Remaining Outcomes：移除 raw 视频兼容是用户指定范围；403 因果未定。
-- Plan Checkpoint：NOT SET — Developer 开工时从 Git 解析实际计划提交。
+- Plan Checkpoint：e10e1b66f2bb04bb62dff7df40ff93faea27570b。
 - Implementation Head：NOT SET。
 
 ## B Review Result
@@ -167,5 +176,5 @@ Acceptance / Required Outcomes all satisfied: PENDING
 Slice Required Outcomes all satisfied: N/A — standalone bug
 Evidence / Reuse / NOT RUN: 修复测试与独立审查 NOT RUN
 Blockers / Remaining Risks: 尚未实施；不承诺 403 或客户端兼容结果
-Next: 等待用户授权实施；本轮仅规划，不自动实施
+Next: Developer 按已激活合同实施并完成 T4 隔离验证，再移交独立 B 审查
 ```
