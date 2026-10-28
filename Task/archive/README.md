@@ -11,6 +11,8 @@
 
 | 记录 | 范围 | 已有最终决定 |
 | --- | --- | --- |
+| [Slice S2](S2-video-head-routing-and-logging.md#a-final-review) | 视频 HEAD 回源、GET 保留、安全结果日志与精确 stream 入口 | 独立 A PASS / CLOSED，2026-10-29；限本地验收 |
+| [S2.1](S2.1-video-request-handling-and-logging.md#b-review-result) | S2 三项结果的实现、回归与独立交接 | 独立 B PASS，2026-10-29 |
 | [BUG-002](BUG-002-remove-danmu-video-handling.md#b-review-result) | 删除两个 danmu raw 视频特殊入口，普通 HTTP 透传及真正视频回归 | 独立 B PASS，2026-10-28 |
 | [BUG-001](BUG-001-media-source-cache-invalidation.md) | 同一媒体源无效 Path 清理旧直链及回退 / 恢复 | 独立 B PASS，2026-10-24 |
 | [Slice S1](S1-remove-playback-info-json-cache.md#a-final-review) | 删除完整 JSON 缓存、按配置覆盖字段、真实服务验证 | 独立 A PASS / CLOSED，2026-10-25 |
@@ -19,6 +21,11 @@
 | [S1.3](S1.3-playback-info-field-configuration.md) | 字段配置、默认不改及直链一致性 | 独立 B PASS，2026-10-25 |
 | [S1.4](S1.4-candidate-real-validation-and-handoff.md#b-final-review-result2026-10-25当前有效) | 候选真实验证、RR-1 / RR-2 补证与交接 | 独立 B PASS，2026-10-25 |
 | [S1 字段合同补充](S1-playback-info-field-overrides.md) | 两个字段表、执行顺序与 F-01～F-08 | S1 规范性组成部分，随合同保留 |
+
+S2 审查固定范围为 `3f997b53128305dd4e25b616b0794408ffefa859..a2f7d46afc1339d3a3b91e57c7fa1db29749580f`，
+产品变更仍为 1.0.1 的 Unreleased；A 复跑现有应用入口并按输入一致性复用 B 的 291 项完整回归。
+真实 Jellyfin / 客户端 / Uvicorn 网络 / 打包 / 部署 / 性能 **NOT RUN**，Developer 首次夹具失败
+原始日志缺失作为非阻塞 P2 保留；本地假上游结论不扩大为真实兼容保证。
 
 S1 审查固定范围为 `6bec0d64c5b5f50c74dcf76cc679185e5f1ebec5..a0cc7cddff32da585923c5ff11d3977ea910d87a`，
 原审查时版本为 0.9.3 / Unreleased；后续 1.0.0 版本整理不改变该范围。审查的真实服务结论
