@@ -138,7 +138,7 @@ SupportsTranscoding = false
 
 - 视频 `HEAD` 请求（`/Videos/{id}/stream` 与 `/Videos/{id}/stream.{container}`）始终按
   HEAD 透传 Jellyfin，不再查询直链映射或返回 302；GET 的直链命中、回退和失效恢复不变。
-- 视频直链特殊处理只作用于上述两种路径的 GET / HEAD，`Videos` 与 `stream` 不区分大小写；
+- 视频特殊处理只作用于上述两种路径的 GET / HEAD，`Videos` 与 `stream` 不区分大小写；
   `/video/...`、`master.m3u8`、HLS、字幕及其他子路径改为普通代理，即使携带
   `MediaSourceId` 也不会产生视频 302。
 - 视频 GET / HEAD 会在应用日志中记录实际处理方式、映射命中情况和响应状态；新增日志
