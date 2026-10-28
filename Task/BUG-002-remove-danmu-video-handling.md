@@ -7,11 +7,11 @@
 Task ID: BUG-002
 Work Type: BUGFIX
 Parent Slice: N/A — standalone bug
-Status: IN PROGRESS
+Status: READY FOR B REVIEW
 Task Base: e4695d81596642363be8219441037da881f8a1ff
 Contract Checkpoint: N/A — standalone bug
 Plan Checkpoint: e10e1b66f2bb04bb62dff7df40ff93faea27570b
-Implementation Head: NOT SET
+Implementation Head: e05d4aebdaace8de824860dea87667da3fd6c51b
 Difficulty: Medium
 Test Level: T4
 Planner / Reviewer: B
@@ -159,12 +159,64 @@ git diff --check
 
 ## Developer Completion Report
 
-- Changed Files / Implemented：NOT RUN — 已激活，产品实现尚未开始。
-- Acceptance Mapping：PENDING。
-- Tests and Results / Evidence：修复测试 NOT RUN；本次只检查任务文档和实施准入。
-- Decisions / Risks / Remaining Outcomes：移除 raw 视频兼容是用户指定范围；403 因果未定。
-- Plan Checkpoint：e10e1b66f2bb04bb62dff7df40ff93faea27570b。
-- Implementation Head：NOT SET。
+### Changed Files / Implemented
+
+- `routers/route_config.py`：删除 `emby_danmu_raw` 的 `VIDEO` 规则；两个 raw 入口（带
+  尾斜杠及各 HTTP 方法）自然匹配 `DEFAULT`。
+- `handlers/video_handler.py`：删除 danmu raw 专用路径 ID 提取；保留 `/Videos/{id}`
+  路径 ID、`MediaSourceId` / `mediaSourceId` 优先级、媒体映射与 302 回退逻辑。
+- `tests/test_core.py`：新增真实 `create_app` 装配下的 danmu 透传合同矩阵（两个前缀、
+  XML / 404、查询参数、尾斜杠、上游 401/403/500/自身 302、HEAD、Range / 认证 /
+  客户端绕过）；删除旧 raw 302 预期，保留真正视频的映射失效 / 回退 / 恢复矩阵。
+- `tests/test_real_jellyfin_validation.py`：覆盖上游基线比较的 PASS 与错误视频 302
+  的 FAIL，以及 `check_raw_unseeded` 的种入前后判定。
+- `scripts/validation/common.py`、`scenarios.py`、`supplement.py`：新增共享的上游透传
+  比较；RJ-05 / RJ-10 与 V2 raw 检查改为在映射种入前后与直连 Jellyfin 比较，错误视频
+  302 或无上游事务判 FAIL。
+- `docs/configuration.md`、`CHANGELOG.md`、`README.md`、
+  `docs/validation/jellyfin-12.3-baseline.md`：同步未发布行为说明，并区分历史 S1.1
+  运行中的旧 raw 302 结论与当前工具预期。
+
+### Acceptance Mapping
+
+| AC | Result | Evidence |
+| --- | --- | --- |
+| AC-1 | PASS (local) | Router 对 4 种路径形式 × 7 个方法均为 `DEFAULT`；真实应用请求 raw 时 `MediaSourceCache.get` 零调用，上游收到请求 |
+| AC-2 | PASS (local) | 先有有效映射再请求两个 raw，仍访问上游且不生成视频 Location；随后真正 `/Videos/...` 仍 302 到原映射 |
+| AC-3 | PASS (local) | 上游 200 XML、404、401、403、500、自身 302 的状态 / 正文 / Content-Type / Location 保留；HEAD 无正文且上游流关闭 |
+| AC-4 | PASS (local) | 查询参数、尾斜杠、编码查询、Range、Authorization 原样转发；SenPlayer / Video / 全局绕过客户端均不恢复 raw 特殊分流；认证脱敏沿用既有日志测试 |
+| AC-5 | PASS (local) | 真正视频的映射恢复 / 失效回退 / query 优先级 / 路径 ID / UUID / Range 206 既有用例保留并通过；PlaybackInfo 字段与绕过路径未改 |
+| AC-6 | PASS (local) | raw 302 预期已转为透传合同；补证工具接受正确透传 PASS、拒绝错误视频 302；文档区分历史与当前预期 |
+| AC-7 | PENDING | 独立 B 审查尚未进行；真实 Jellyfin / Emby / SenPlayer、403 结论与部署均 NOT RUN |
+
+### Tests and Results / Evidence
+
+证据目录：`artifacts/validation-evidence/BUG-002/20261028T133242Z-dev/`（本地未跟踪，
+未提交或推送）。
+
+- 未修复基线首次失败：`.venv/bin/python -m pytest tests/test_core.py -k danmu -q`
+  → exit 1，41 failed / 2 passed；日志 `red-pytest-danmu.txt`。
+- 聚焦核心回归：`.venv/bin/python -m pytest tests/test_core.py -k 'danmu or routes or video or bypass or proxy or stream' -q`
+  → 67 passed。
+- 验证工具回归：`.venv/bin/python -m pytest tests/test_real_jellyfin_validation.py -q`
+  → 50 passed。
+- 最终候选门槛：`.venv/bin/python -m pytest` → 254 passed，5.41s；
+  `git diff --check` → exit 0。
+- 完整记录、命令、环境、源码 SHA、候选 diff 与文件摘要见证据目录 `README.md`。
+- 测试运行合计约 21 秒，约为本轮开发约 28 分钟时间的 1.3%，低于 30%。
+
+### Decisions / Risks / Remaining Outcomes
+
+- 两个 danmu raw 入口不再使用媒体映射是用户明确授权的兼容行为调整；依赖旧 raw
+  视频 302 的客户端将改为收到 Jellyfin 的普通响应，这是预期影响。
+- 上游自身返回的 302 仍按普通代理转发；工具通过 Location 与直连基线一致来区分
+  上游 302 和代理生成的视频 302。
+- 未运行真实 Jellyfin / Emby / SenPlayer、生产部署、性能、打包或 403 验证，不能把
+  本地假上游 / 单元结果扩大为真实客户端兼容结论。
+- 独立 B 审查仍未进行，Task 保持待审；本轮不自签 PASS。
+
+- Plan Checkpoint：`e10e1b66f2bb04bb62dff7df40ff93faea27570b`。
+- Implementation Head：`e05d4aebdaace8de824860dea87667da3fd6c51b`。
 
 ## B Review Result
 
@@ -172,9 +224,9 @@ git diff --check
 Reviewed Range: NOT SET
 Reviewer / Independence: NOT SET
 Decision: PENDING
-Acceptance / Required Outcomes all satisfied: PENDING
+Acceptance / Required Outcomes all satisfied: PENDING — Developer 自检仅到 READY FOR B REVIEW
 Slice Required Outcomes all satisfied: N/A — standalone bug
-Evidence / Reuse / NOT RUN: 修复测试与独立审查 NOT RUN
-Blockers / Remaining Risks: 尚未实施；不承诺 403 或客户端兼容结果
-Next: Developer 按已激活合同实施并完成 T4 隔离验证，再移交独立 B 审查
+Evidence / Reuse / NOT RUN: 本地证据见 `artifacts/validation-evidence/BUG-002/20261028T133242Z-dev/`；真实 Jellyfin / 客户端 / 部署 NOT RUN
+Blockers / Remaining Risks: 独立 B 审查未开始；不承诺 403 或客户端兼容结果
+Next: 独立 B 审查 `Task Base..e05d4aebdaace8de824860dea87667da3fd6c51b` 并逐项核对 AC-1～7
 ```
