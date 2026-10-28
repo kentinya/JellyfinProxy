@@ -11,7 +11,7 @@ Status: READY FOR B REVIEW
 Task Base: e4695d81596642363be8219441037da881f8a1ff
 Contract Checkpoint: N/A — standalone bug
 Plan Checkpoint: e10e1b66f2bb04bb62dff7df40ff93faea27570b
-Implementation Head: e05d4aebdaace8de824860dea87667da3fd6c51b
+Implementation Head: e205dbf366dce6bd5174c3e1ce0b33bb413fc05e
 Difficulty: Medium
 Test Level: T4
 Planner / Reviewer: B
@@ -184,7 +184,7 @@ git diff --check
 | AC-1 | PASS (local) | Router 对 4 种路径形式 × 7 个方法均为 `DEFAULT`；真实应用请求 raw 时 `MediaSourceCache.get` 零调用，上游收到请求 |
 | AC-2 | PASS (local) | 先有有效映射再请求两个 raw，仍访问上游且不生成视频 Location；随后真正 `/Videos/...` 仍 302 到原映射 |
 | AC-3 | PASS (local) | 上游 200 XML、404、401、403、500、自身 302 的状态 / 正文 / Content-Type / Location 保留；HEAD 无正文且上游流关闭 |
-| AC-4 | PASS (local) | 查询参数、尾斜杠、编码查询、Range、Authorization 原样转发；SenPlayer / Video / 全局绕过客户端均不恢复 raw 特殊分流；认证脱敏沿用既有日志测试 |
+| AC-4 | PASS (local) | 查询参数、尾斜杠、编码路径与编码查询、Range、Authorization 原样转发；SenPlayer / Video / 全局绕过客户端均不恢复 raw 特殊分流；认证脱敏沿用既有日志测试 |
 | AC-5 | PASS (local) | 真正视频的映射恢复 / 失效回退 / query 优先级 / 路径 ID / UUID / Range 206 既有用例保留并通过；PlaybackInfo 字段与绕过路径未改 |
 | AC-6 | PASS (local) | raw 302 预期已转为透传合同；补证工具接受正确透传 PASS、拒绝错误视频 302；文档区分历史与当前预期 |
 | AC-7 | PENDING | 独立 B 审查尚未进行；真实 Jellyfin / Emby / SenPlayer、403 结论与部署均 NOT RUN |
@@ -200,10 +200,10 @@ git diff --check
   → 67 passed。
 - 验证工具回归：`.venv/bin/python -m pytest tests/test_real_jellyfin_validation.py -q`
   → 50 passed。
-- 最终候选门槛：`.venv/bin/python -m pytest` → 254 passed，5.41s；
+- 最终候选门槛：`.venv/bin/python -m pytest` → 255 passed，5.94s；
   `git diff --check` → exit 0。
 - 完整记录、命令、环境、源码 SHA、候选 diff 与文件摘要见证据目录 `README.md`。
-- 测试运行合计约 21 秒，约为本轮开发约 28 分钟时间的 1.3%，低于 30%。
+- 本轮记录测试合计约 26 秒，远低于本轮开发时间的 30% 上限。
 
 ### Decisions / Risks / Remaining Outcomes
 
@@ -216,7 +216,7 @@ git diff --check
 - 独立 B 审查仍未进行，Task 保持待审；本轮不自签 PASS。
 
 - Plan Checkpoint：`e10e1b66f2bb04bb62dff7df40ff93faea27570b`。
-- Implementation Head：`e05d4aebdaace8de824860dea87667da3fd6c51b`。
+- Implementation Head：`e205dbf366dce6bd5174c3e1ce0b33bb413fc05e`。
 
 ## B Review Result
 
@@ -228,5 +228,5 @@ Acceptance / Required Outcomes all satisfied: PENDING — Developer 自检仅到
 Slice Required Outcomes all satisfied: N/A — standalone bug
 Evidence / Reuse / NOT RUN: 本地证据见 `artifacts/validation-evidence/BUG-002/20261028T133242Z-dev/`；真实 Jellyfin / 客户端 / 部署 NOT RUN
 Blockers / Remaining Risks: 独立 B 审查未开始；不承诺 403 或客户端兼容结果
-Next: 独立 B 审查 `Task Base..e05d4aebdaace8de824860dea87667da3fd6c51b` 并逐项核对 AC-1～7
+Next: 独立 B 审查 `Task Base..e205dbf366dce6bd5174c3e1ce0b33bb413fc05e` 并逐项核对 AC-1～7
 ```
