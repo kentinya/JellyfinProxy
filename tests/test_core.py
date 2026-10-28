@@ -277,7 +277,6 @@ def test_playback_pipeline_restores_redirect_after_new_valid_path() -> None:
         ("/Videos/source-id/stream.mkv", b"MediaSourceId=source-id"),
         ("/videos/source-id/stream.mkv", b"mediaSourceId=source-id"),
         ("/Videos/source-id/stream", b""),
-        ("/emby/api/danmu/source-id/raw", b""),
     ):
         response = asyncio.run(
             VideoHandler(UnexpectedProxy(), restored.service.media_source_cache).handle(  # type: ignore[arg-type]
@@ -293,8 +292,6 @@ def test_playback_pipeline_restores_redirect_after_new_valid_path() -> None:
     pytest.param("/videos/source-id/stream.mkv", b"mediaSourceId=source-id", id="query-lower-media-source-id"),
     pytest.param("/Videos/source-id/stream", b"", id="videos-path-id"),
     pytest.param("/Videos/788be25d-f930-7eb4-19a2-316de9f9d699/stream", b"", id="videos-path-uuid"),
-    pytest.param("/emby/api/danmu/source-id/raw", b"", id="emby-danmu-raw"),
-    pytest.param("/api/danmu/source-id/raw", b"", id="danmu-raw"),
 ])
 def test_playback_pipeline_video_falls_back_to_proxy_after_clearing(video_path, query) -> None:
     media_source_id = (
@@ -478,6 +475,75 @@ def _app_with_fake_upstream(handler, **settings_overrides) -> tuple[object, obje
     return main_module.create_app(settings), patcher
 
 
+class ScriptedAsyncStream(httpx.AsyncByteStream):
+    def __init__(self, body: bytes) -> None:
+        self.body = body
+        self.closed = False
+
+    async def __aiter__(self):
+        for offset in range(0, len(self.body), 8):
+            yield self.body[offset:offset + 8]
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+
+def _app_with_scripted_upstream(responder, **settings_overrides):
+    """Build the real app with a stub client that returns scripted responses.
+
+    ``responder(request, transaction, *, stream)`` returns
+    ``(status, headers, body)``. Streaming responses receive an observable
+    async stream so tests can check that the proxy releases upstream bodies.
+    """
+
+    class StubClient:
+        def __init__(self, **kwargs) -> None:
+            self.kwargs = kwargs
+            self.calls: list[httpx.Request] = []
+            self.stream_calls: list[httpx.Request] = []
+            self.streams: list[ScriptedAsyncStream] = []
+
+        async def forward(self, request: Request) -> httpx.Response:
+            self.calls.append(request)
+            status, headers, body = responder(request, len(self.calls), stream=False)
+            return httpx.Response(status, headers=headers, content=body)
+
+        async def forward_stream(self, request: Request) -> httpx.Response:
+            self.stream_calls.append(request)
+            status, headers, body = responder(request, len(self.stream_calls), stream=True)
+            stream = ScriptedAsyncStream(body)
+            self.streams.append(stream)
+            return httpx.Response(status, headers=headers, stream=stream)
+
+        async def close(self) -> None:
+            pass
+
+    settings = replace(
+        Settings.from_env(),
+        log_file="",
+        access_log_file="",
+        **settings_overrides,
+    )
+    patcher = patch.object(main_module, "JellyfinHttpClient", StubClient)
+    patcher.start()
+    return main_module.create_app(settings), patcher
+
+
+def _seed_media_mapping(request: Request) -> tuple[int, dict[str, str], bytes] | None:
+    if not request.url.path.endswith("/PlaybackInfo"):
+        return None
+    return (
+        200,
+        {"content-type": "application/json"},
+        json.dumps({
+            "MediaSources": [{
+                "Id": "source-id",
+                "Path": "https://media.example/source.mkv",
+            }],
+        }).encode(),
+    )
+
+
 def test_create_app_issues_one_upstream_call_per_concurrent_request() -> None:
     rejected: list[str] = []
 
@@ -607,6 +673,231 @@ def test_create_app_bypass_forwards_original_body_and_fills_video_redirect() -> 
     ]
 
 
+@pytest.mark.parametrize(("path", "status", "content_type", "body"), [
+    pytest.param(
+        "/api/danmu/source-id/raw",
+        200,
+        "application/xml; charset=utf-8",
+        b"<danmu><message>first</message></danmu>",
+        id="danmu-raw-xml",
+    ),
+    pytest.param(
+        "/emby/api/danmu/source-id/raw",
+        200,
+        "application/xml; charset=utf-8",
+        b"<danmu><message>first</message></danmu>",
+        id="emby-danmu-raw-xml",
+    ),
+    pytest.param(
+        "/api/danmu/source-id/raw",
+        404,
+        "text/plain; charset=utf-8",
+        b"unknown danmu item",
+        id="danmu-raw-404",
+    ),
+    pytest.param(
+        "/emby/api/danmu/source-id/raw",
+        404,
+        "text/plain; charset=utf-8",
+        b"unknown danmu item",
+        id="emby-danmu-raw-404",
+    ),
+])
+def test_create_app_danmu_raw_uses_plain_proxy_with_valid_media_mapping(
+    path, status, content_type, body
+) -> None:
+    def responder(request: Request, transaction: int, *, stream: bool):
+        seed = _seed_media_mapping(request)
+        if seed is not None:
+            return seed
+        assert stream, f"raw entry must be streamed through the proxy, not fetched as {request.method}"
+        return status, {"content-type": content_type, "x-upstream-danmu": "kept"}, body
+
+    app, patcher = _app_with_scripted_upstream(responder)
+    try:
+        with TestClient(app) as client:
+            seeded = client.post("/Items/source-id/PlaybackInfo")
+            assert seeded.status_code == 200
+
+            cache = app.state.dispatcher._video._media_source_cache  # type: ignore[attr-defined]
+            with patch.object(cache, "get", wraps=cache.get) as cache_get:
+                response = client.get(path, follow_redirects=False)
+            assert cache_get.call_count == 0
+
+            video = client.get("/Videos/source-id/stream.mkv", follow_redirects=False)
+    finally:
+        patcher.stop()
+
+    upstream = app.state.dispatcher._proxy._http_client  # type: ignore[attr-defined]
+    assert len(upstream.calls) == 1
+    assert len(upstream.stream_calls) == 1
+    assert upstream.stream_calls[0].url.path == path
+    assert response.status_code == status
+    assert response.content == body
+    assert response.headers["content-type"] == content_type
+    assert response.headers["x-upstream-danmu"] == "kept"
+    assert "location" not in response.headers
+
+    assert video.status_code == 302
+    assert video.headers["location"] == "https://media.example/source.mkv"
+    assert len(upstream.stream_calls) == 1
+
+
+@pytest.mark.parametrize(("path", "query"), [
+    pytest.param(
+        "/api/danmu/source-id/raw/?MediaSourceId=source-id",
+        "MediaSourceId=source-id",
+        id="danmu-raw-trailing-slash",
+    ),
+    pytest.param(
+        "/emby/api/danmu/source-id/raw?mediaSourceId=source-id",
+        "mediaSourceId=source-id",
+        id="emby-danmu-raw-lower-query",
+    ),
+    pytest.param(
+        "/api/danmu/source-id/raw?MediaSourceId=source-id&mediaSourceId=other-id",
+        "MediaSourceId=source-id&mediaSourceId=other-id",
+        id="danmu-raw-two-query-names",
+    ),
+])
+def test_create_app_danmu_raw_media_source_query_does_not_restore_redirect(path, query) -> None:
+    def responder(request: Request, transaction: int, *, stream: bool):
+        seed = _seed_media_mapping(request)
+        if seed is not None:
+            return seed
+        assert stream
+        return 404, {"content-type": "text/plain"}, b"upstream raw response"
+
+    app, patcher = _app_with_scripted_upstream(responder)
+    try:
+        with TestClient(app) as client:
+            assert client.post("/Items/source-id/PlaybackInfo").status_code == 200
+            response = client.get(path, follow_redirects=False)
+    finally:
+        patcher.stop()
+
+    upstream = app.state.dispatcher._proxy._http_client  # type: ignore[attr-defined]
+    assert len(upstream.stream_calls) == 1
+    assert upstream.stream_calls[0].url.path == path.split("?", 1)[0]
+    assert upstream.stream_calls[0].url.query == query
+    assert response.status_code == 404
+    assert response.content == b"upstream raw response"
+    assert "location" not in response.headers
+
+
+@pytest.mark.parametrize(("status", "headers", "body"), [
+    pytest.param(401, {"content-type": "text/plain", "www-authenticate": 'Basic realm="jellyfin"'}, b"unauthorized", id="401"),
+    pytest.param(403, {"content-type": "text/plain"}, b"forbidden", id="403"),
+    pytest.param(500, {"content-type": "text/plain"}, b"upstream failure", id="500"),
+    pytest.param(
+        302,
+        {"content-type": "text/plain", "location": "https://jellyfin.example/upstream-redirect"},
+        b"redirecting",
+        id="upstream-302",
+    ),
+])
+def test_create_app_danmu_raw_preserves_upstream_status_and_headers(status, headers, body) -> None:
+    def responder(request: Request, transaction: int, *, stream: bool):
+        seed = _seed_media_mapping(request)
+        if seed is not None:
+            return seed
+        assert stream
+        return status, headers, body
+
+    app, patcher = _app_with_scripted_upstream(responder)
+    try:
+        with TestClient(app) as client:
+            assert client.post("/Items/source-id/PlaybackInfo").status_code == 200
+            response = client.get("/emby/api/danmu/source-id/raw", follow_redirects=False)
+    finally:
+        patcher.stop()
+
+    upstream = app.state.dispatcher._proxy._http_client  # type: ignore[attr-defined]
+    assert len(upstream.stream_calls) == 1
+    assert response.status_code == status
+    assert response.content == body
+    for name, value in headers.items():
+        assert response.headers[name] == value
+    if status == 302:
+        assert response.headers["location"] == "https://jellyfin.example/upstream-redirect"
+    else:
+        assert "location" not in response.headers
+
+
+def test_create_app_danmu_raw_head_forwards_headers_without_body() -> None:
+    def responder(request: Request, transaction: int, *, stream: bool):
+        seed = _seed_media_mapping(request)
+        if seed is not None:
+            return seed
+        assert stream
+        assert request.method == "HEAD"
+        return 200, {"content-type": "application/xml", "content-length": "0"}, b""
+
+    app, patcher = _app_with_scripted_upstream(responder)
+    try:
+        with TestClient(app) as client:
+            assert client.post("/Items/source-id/PlaybackInfo").status_code == 200
+            response = client.head("/api/danmu/source-id/raw", follow_redirects=False)
+    finally:
+        patcher.stop()
+
+    upstream = app.state.dispatcher._proxy._http_client  # type: ignore[attr-defined]
+    assert len(upstream.stream_calls) == 1
+    assert response.status_code == 200
+    assert response.content == b""
+    assert response.headers["content-type"] == "application/xml"
+    assert "location" not in response.headers
+    assert upstream.streams[0].closed
+
+
+@pytest.mark.parametrize("client_name", ["SenPlayer", "VideoBypassClient", "GlobalBypassClient"])
+def test_create_app_danmu_raw_forwards_range_auth_and_ignores_bypass_lists(client_name) -> None:
+    token = "danmu-auth-sentinel-value"
+
+    def responder(request: Request, transaction: int, *, stream: bool):
+        seed = _seed_media_mapping(request)
+        if seed is not None:
+            return seed
+        assert stream
+        return 206, {
+            "content-type": "video/mp4",
+            "content-range": "bytes 0-3/100",
+            "accept-ranges": "bytes",
+        }, b"data"
+
+    app, patcher = _app_with_scripted_upstream(
+        responder,
+        bypass_clients=("GlobalBypassClient",),
+        video_bypass_clients=("VideoBypassClient",),
+    )
+    try:
+        with TestClient(app) as client:
+            assert client.post("/Items/source-id/PlaybackInfo").status_code == 200
+            response = client.get(
+                "/api/danmu/source-id/raw?MediaSourceId=source-id&api_key=secret%2Bvalue",
+                headers={
+                    "x-emby-client": client_name,
+                    "range": "bytes=0-3",
+                    "authorization": f'MediaBrowser Client="x", Token={token}',
+                },
+                follow_redirects=False,
+            )
+    finally:
+        patcher.stop()
+
+    upstream = app.state.dispatcher._proxy._http_client  # type: ignore[attr-defined]
+    assert len(upstream.stream_calls) == 1
+    forwarded = upstream.stream_calls[0]
+    assert forwarded.url.path == "/api/danmu/source-id/raw"
+    assert forwarded.url.query == "MediaSourceId=source-id&api_key=secret%2Bvalue"
+    assert forwarded.headers["range"] == "bytes=0-3"
+    assert forwarded.headers["authorization"] == f'MediaBrowser Client="x", Token={token}'
+    assert response.status_code == 206
+    assert response.content == b"data"
+    assert response.headers["content-range"] == "bytes 0-3/100"
+    assert "location" not in response.headers
+
+
 def test_create_app_playback_upstream_error_is_not_replayed_from_success() -> None:
     calls = {"n": 0}
 
@@ -668,8 +959,17 @@ def test_routes_cover_playback_and_video_variants() -> None:
         assert router.match(path, "GET") is HandlerType.VIDEO
     assert router.match("/Video/stream/movie.mkv", "GET") is HandlerType.DEFAULT
     assert router.match("/videography", "GET") is HandlerType.DEFAULT
-    assert router.match("/emby/api/danmu/source-id/raw", "GET") is HandlerType.VIDEO
-    assert router.match("/api/danmu/source-id/raw", "GET") is HandlerType.VIDEO
+
+
+@pytest.mark.parametrize("method", ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+@pytest.mark.parametrize("path", [
+    "/emby/api/danmu/source-id/raw",
+    "/emby/api/danmu/source-id/raw/",
+    "/api/danmu/source-id/raw",
+    "/api/danmu/source-id/raw/",
+])
+def test_router_keeps_danmu_raw_out_of_video_routing(path, method) -> None:
+    assert Router().match(path, method) is HandlerType.DEFAULT
 
 
 @pytest.mark.parametrize("query_string", [
@@ -717,52 +1017,6 @@ def test_video_handler_uses_hyphenated_path_id_when_query_id_is_missing() -> Non
         "scheme": "http",
         "server": ("proxy", 8097),
         "path": "/Videos/788be25d-f930-7eb4-19a2-316de9f9d699/stream",
-        "query_string": b"",
-        "headers": [],
-    })
-
-    response = asyncio.run(VideoHandler(FailingProxy(), cache).handle(request))  # type: ignore[arg-type]
-
-    assert response.status_code == 302
-    assert response.headers["location"] == "https://media.example/movie.mkv"
-
-
-def test_video_handler_uses_emby_danmu_raw_path_id() -> None:
-    class FailingProxy:
-        async def handle(self, request: Request) -> Response:
-            raise AssertionError(f"unexpected proxy fallback for {request.url.path}")
-
-    cache = MediaSourceCache()
-    cache.remember("source-id", "https://media.example/movie.mkv")
-    request = Request({
-        "type": "http",
-        "method": "GET",
-        "scheme": "http",
-        "server": ("proxy", 8097),
-        "path": "/emby/api/danmu/source-id/raw",
-        "query_string": b"",
-        "headers": [],
-    })
-
-    response = asyncio.run(VideoHandler(FailingProxy(), cache).handle(request))  # type: ignore[arg-type]
-
-    assert response.status_code == 302
-    assert response.headers["location"] == "https://media.example/movie.mkv"
-
-
-def test_video_handler_uses_danmu_raw_path_without_emby_prefix() -> None:
-    class FailingProxy:
-        async def handle(self, request: Request) -> Response:
-            raise AssertionError(f"unexpected proxy fallback for {request.url.path}")
-
-    cache = MediaSourceCache()
-    cache.remember("source-id", "https://media.example/movie.mkv")
-    request = Request({
-        "type": "http",
-        "method": "GET",
-        "scheme": "http",
-        "server": ("proxy", 8097),
-        "path": "/api/danmu/source-id/raw",
         "query_string": b"",
         "headers": [],
     })

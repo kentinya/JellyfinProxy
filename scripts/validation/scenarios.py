@@ -26,6 +26,7 @@ from scripts.validation.client import (
 from scripts.validation.common import (
     ValidationError,
     canonical_json,
+    passthrough_matches_upstream,
     redact,
     redact_text,
     sha256_bytes,
@@ -759,19 +760,93 @@ def _seed_mapping(ctx: GroupContext, item_key: str = "remote") -> dict[str, Any]
     return source
 
 
+def _raw_entry_paths(item_id: str) -> tuple[tuple[str, str], ...]:
+    return (
+        ("emby_raw", f"/emby/api/danmu/{item_id}/raw"),
+        ("raw", f"/api/danmu/{item_id}/raw"),
+    )
+
+
+def _raw_observation(response) -> dict[str, Any]:
+    location = response.header("location")
+    return {
+        "status": response.status,
+        "body_sha256": response.body_sha256,
+        "body_bytes": len(response.body),
+        "content_type": response.header("content-type"),
+        "location_present": bool(location),
+        "location_digest": sha256_bytes(location.encode())[:12] if location else None,
+    }
+
+
+def _raw_passthrough(ctx: GroupContext, item_id: str, headers: Mapping[str, str], tag: str) -> tuple[dict[str, Any], bool]:
+    """Compare both raw entries with the direct Jellyfin response.
+
+    The proxy must not manufacture a media redirect even when the same item has
+    a cached mapping. The direct server is the baseline for status, body and
+    Content-Type; an upstream-originated Location is allowed only when the
+    direct response has the same Location.
+    """
+
+    rows: dict[str, Any] = {}
+    for label, path in _raw_entry_paths(item_id):
+        with TestClient(ctx.jellyfin.base_url) as direct:
+            baseline = _raw_observation(direct.get(path, headers=headers))
+        request_id = f"s1-{tag}-{ctx.group}-{label}"
+        with ctx.client() as client:
+            observed = _raw_observation(client.get(path, headers=headers, request_id=request_id))
+        observed["path"] = path
+        observed["jellyfin_direct"] = baseline
+        observed["upstream_transactions"] = ctx.upstream_count(r"/api/danmu/[^/]+/raw", [request_id])
+        observed["matches_upstream"] = (
+            observed["upstream_transactions"] > 0
+            and passthrough_matches_upstream(observed, baseline)
+        )
+        rows[label] = observed
+    return rows, all(row["matches_upstream"] for row in rows.values())
+
+
 def rj05(ctx: GroupContext) -> None:
     case = "RJ-05"
     item = ctx.item("remote")
     source = _pick_item(ctx, remote_only=True) and ctx.item("remote")
-    seeded = _seed_mapping(ctx, "remote")
-    if seeded is None:
-        ctx.recorder.record(case, ctx.group, "seed_mapping", "FAIL", detail={"error": "PlaybackInfo failed"})
-        return
-    media_source_id = seeded.get("Id") or item["id"]
     item_id = item["id"]
     token = ctx.token()
     headers = identity_headers("PlainClient", "s1-device-alpha", device_id="s1-device-alpha", token=token)
 
+    # Raw entries are checked before and after this case seeds the mapping. The
+    # direct Jellyfin response is the baseline in both positions.
+    raw_before, raw_before_ok = _raw_passthrough(ctx, item_id, headers, "rj05-raw-before")
+    ctx.recorder.record(
+        case,
+        ctx.group,
+        "raw_before_seed",
+        "PASS" if raw_before_ok else "FAIL",
+        detail={"rows": raw_before},
+        notes=[
+            "both raw entries must keep Jellyfin's status, body, Content-Type and any upstream Location",
+            "a proxy-generated video redirect, or a request that never reaches upstream, fails",
+        ],
+    )
+
+    seeded = _seed_mapping(ctx, "remote")
+    if seeded is None:
+        ctx.recorder.record(case, ctx.group, "seed_mapping", "FAIL", detail={"error": "PlaybackInfo failed"})
+        return
+    raw_after, raw_after_ok = _raw_passthrough(ctx, item_id, headers, "rj05-raw-after")
+    ctx.recorder.record(
+        case,
+        ctx.group,
+        "raw_after_seed",
+        "PASS" if raw_after_ok else "FAIL",
+        detail={"seed_protocol": seeded.get("Protocol"), "rows": raw_after},
+        notes=[
+            "the same item now has a mapping, yet both raw entries must still use the plain proxy",
+            "the direct Jellyfin row is the baseline; an old 302-to-seeded-URL result is a FAIL now",
+        ],
+    )
+
+    media_source_id = seeded.get("Id") or item["id"]
     compact = media_source_id.replace("-", "")
     cases = {
         "query_MediaSourceId": f"/Videos/{item_id}/stream?static=true&MediaSourceId={media_source_id}",
@@ -780,8 +855,6 @@ def rj05(ctx: GroupContext) -> None:
         "uuid_compact": f"/Videos/{item_id}/stream?static=true&MediaSourceId={compact}",
         "Videos_upper": f"/Videos/{media_source_id}/stream",
         "Videos_lower": f"/videos/{media_source_id}/stream",
-        "danmu_emby_raw": f"/emby/api/danmu/{item_id}/raw",
-        "danmu_raw": f"/api/danmu/{item_id}/raw",
     }
     detail: dict[str, Any] = {}
     for label, path in cases.items():
@@ -798,7 +871,7 @@ def rj05(ctx: GroupContext) -> None:
             "location_matches_seed": url_equality_report(str(seeded.get("Path")), location) if location else None,
             "followed": follow,
         }
-    expected_redirect = {"query_MediaSourceId", "query_mediaSourceId", "path_videos_id", "uuid_compact", "Videos_upper", "Videos_lower", "danmu_emby_raw", "danmu_raw"}
+    expected_redirect = {"query_MediaSourceId", "query_mediaSourceId", "path_videos_id", "uuid_compact", "Videos_upper", "Videos_lower"}
     if ctx.is_proxy:
         statuses = {
             label: ("PASS" if detail[label]["status"] == 302 and detail[label]["followed"] and detail[label]["followed"]["bytes_read"] > 0 else "FAIL")
@@ -1240,23 +1313,16 @@ def rj10(ctx: GroupContext) -> None:
             "upstream_transactions": ctx.upstream_count(r"/PlaybackInfo", [rid]),
             "upstream_json_present": ctx.last_json(r"/PlaybackInfo", [rid]) is not None,
         }
-    raw = {}
-    for label, path in (
-        ("emby_raw", f"/emby/api/danmu/{item['id']}/raw"),
-        ("raw", f"/api/danmu/{item['id']}/raw"),
-    ):
-        with ctx.client() as client:
-            response = client.get(path, headers=headers)
-        raw[label] = {"status": response.status, "location_present": bool(response.header("location"))}
+    raw, raw_ok = _raw_passthrough(ctx, item["id"], headers, "rj10-raw")
     ctx.recorder.record(
         case,
         ctx.group,
         "old_prefix_and_raw",
-        "PASS",
+        "PASS" if raw_ok else "FAIL",
         detail={"playback_info": results, "raw": raw},
         notes=[
             "a 404 for the old prefix is the real Jellyfin 12.3 behaviour and must not be rewritten by the proxy",
-            "raw 302 hits are proven separately in RJ-05",
+            "both raw entries are compared with direct Jellyfin; a proxy-generated video 302 fails",
         ],
     )
 

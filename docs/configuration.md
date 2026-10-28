@@ -129,11 +129,14 @@ Content-Length、Content-Encoding 等媒体响应语义。
 | `GET` / `POST` `/Items/{id}/PlaybackInfo` | 获取播放信息、记录直链、按配置覆盖字段 |
 | `GET` / `POST` `/emby/Items/{id}/PlaybackInfo` | 同上 |
 | `/Videos/{id}/...`、`/videos/{id}/...`、`/video/...` | 优先按媒体源 ID 查找直链，未命中则代理 |
-| `/emby/api/danmu/{id}/raw`、`/api/danmu/{id}/raw` | 同样支持直链与代理回退，包括 SenPlayer 使用的 raw 路径 |
+| `/emby/api/danmu/{id}/raw`、`/api/danmu/{id}/raw` | 普通代理到 Jellyfin，不使用视频直链映射 |
 
 视频请求优先使用非空的 `MediaSourceId`，其次为 `mediaSourceId`。两者都没有时，
-`/Videos/{id}/...`、`/videos/{id}/...` 和上述 raw 路径尝试使用路径中的 ID；
-该 ID 需要匹配已记录的媒体源 ID。32 位 UUID 的带连字符和无连字符格式视为同一 ID。
+`/Videos/{id}/...`、`/videos/{id}/...` 尝试使用路径中的 ID；该 ID 需要匹配已记录的
+媒体源 ID。32 位 UUID 的带连字符和无连字符格式视为同一 ID。
+
+两个 danmu raw 入口不属于视频直链入口：即使存在同 ID 的映射，也始终代理到 Jellyfin。
+上游返回的状态、正文和适用的 `Content-Type` / `Location` 按普通 HTTP 代理转发。
 
 ### 地址映射与失效
 
@@ -172,6 +175,12 @@ PlaybackInfo 和 Video 请求会在应用日志中产生 `client_identified` 记
 # 源码运行时：
 .venv/bin/python main.py --version
 ```
+
+## 未发布变更
+
+- `/api/danmu/{id}/raw` 与 `/emby/api/danmu/{id}/raw` 不再使用视频直链映射，改为普通
+  代理到 Jellyfin；即使同 ID 已有映射也不会生成视频 `302`。`/Videos/{id}/...` 等其他
+  视频入口的直链、失效清理和流式回退保持原行为。
 
 ## 从 0.9.x 升级
 

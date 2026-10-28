@@ -39,6 +39,7 @@ from scripts.validation.client import identity_headers
 from scripts.validation.common import (
     ValidationError,
     ensure_directory,
+    passthrough_matches_upstream,
     sha256_bytes,
     utc_now,
     write_json,
@@ -159,6 +160,7 @@ class Session:
             "location_digest": _digest(response.headers.get("location")),
             "content_type": response.headers.get("content-type"),
             "body_bytes": len(response.content),
+            "body_sha256": sha256_bytes(response.content),
         }
 
     def get(self, path: str) -> dict[str, Any]:
@@ -321,7 +323,7 @@ def check_raw_unseeded(
     *,
     direct_j: Session,
 ) -> None:
-    """An id that was never seeded must reach the real server unchanged."""
+    """Both raw entries must stay transparent before and after mapping seeding."""
 
     item_id = ctx.catalog["remote_two"]["id"]
     for label, path in (
@@ -331,15 +333,11 @@ def check_raw_unseeded(
         observed = session.video(path)
         baseline = direct_j.video(path)
         observed["jellyfin_direct"] = baseline
-        observed["ok"] = (
-            not observed["location_digest"]
-            and observed["status"] == baseline["status"]
-            and observed["body_bytes"] == baseline["body_bytes"]
-        )
+        observed["ok"] = passthrough_matches_upstream(observed, baseline)
         recorder.add(
             f"V2-raw-unseeded-{label}",
             session.group,
-            "an unseeded media source id reaches Jellyfin unchanged (no proxy 302, same status and body as direct J)",
+            "an unseeded media source id reaches Jellyfin unchanged (no proxy 302, same status, body and Content-Type as direct J)",
             observed,
             ac="AC-6, AC-9",
             notes=(
@@ -349,21 +347,29 @@ def check_raw_unseeded(
         )
 
     seeded = session.playback_info(item_id, "CacheOnly")
-    after = session.video(f"/api/danmu/{item_id}/raw")
-    after["seed"] = seeded
-    after["expected_digest"] = _digest(_media_url(ctx.catalog, "remote_two"))
-    after["ok"] = (
-        seeded["status"] == 200
-        and after["status"] == 302
-        and after["location_digest"] == after["expected_digest"]
-    )
-    recorder.add(
-        "V2-raw-after-seeding",
-        session.group,
-        "once the same id is seeded by a real PlaybackInfo response, the raw entry redirects to that seeded URL",
-        after,
-        ac="AC-6",
-    )
+    for label, path in (
+        ("raw", f"/api/danmu/{item_id}/raw"),
+        ("emby_raw", f"/emby/api/danmu/{item_id}/raw"),
+    ):
+        after = session.video(path)
+        baseline = direct_j.video(path)
+        after["seed"] = seeded
+        after["jellyfin_direct"] = baseline
+        after["ok"] = (
+            seeded["status"] == 200
+            and passthrough_matches_upstream(after, baseline)
+        )
+        recorder.add(
+            f"V2-raw-after-seeding-{label}",
+            session.group,
+            "after the same id is seeded by a real PlaybackInfo response, the raw entry still matches direct J",
+            after,
+            ac="AC-6",
+            notes=(
+                "a 302 to the seeded URL is the removed behaviour and must now FAIL, not pass",
+                "an upstream-originated Location is accepted only when direct J returns the same one",
+            ),
+        )
 
 
 def check_bypass_matrix(

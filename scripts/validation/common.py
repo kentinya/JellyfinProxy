@@ -121,6 +121,22 @@ def url_digest(url: str) -> str:
     return sha256_bytes(url.encode("utf-8"))[:16]
 
 
+def passthrough_matches_upstream(
+    observed: Mapping[str, Any], baseline: Mapping[str, Any]
+) -> bool:
+    """Compare a proxy response with the direct upstream response.
+
+    A transparent route must keep the upstream status, body and Content-Type.
+    A Location is allowed only when it is the upstream's own Location; a
+    proxy-generated media redirect necessarily changes the status or body.
+    """
+
+    for key in ("status", "body_sha256", "content_type"):
+        if observed.get(key) != baseline.get(key):
+            return False
+    return (observed.get("location_digest") or None) == (baseline.get("location_digest") or None)
+
+
 # ---------------------------------------------------------------------------
 # process / docker helpers
 # ---------------------------------------------------------------------------

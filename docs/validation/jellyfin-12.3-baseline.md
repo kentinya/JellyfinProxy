@@ -207,8 +207,8 @@ RUN_DIR=artifacts/validation-evidence/S1/s1-1-supplement-<timestamp>
 
 | 检查 | 走的产品入口 | 判定依据 |
 |---|---|---|
-| `V2-raw-unseeded-*` | `/api/danmu/{id}/raw`、`/emby/api/danmu/{id}/raw` | 未种入时状态与正文须与直连 J 相同，不得 302 |
-| `V2-raw-after-seeding` | 同上 + `PlaybackInfo` | 种入后须 302 到该 Item 自己的远端 URL |
+| `V2-raw-unseeded-*` | `/api/danmu/{id}/raw`、`/emby/api/danmu/{id}/raw` | 未种入时状态、正文和 `Content-Type` 须与直连 J 相同，不得生成视频 302 |
+| `V2-raw-after-seeding-raw`、`V2-raw-after-seeding-emby_raw` | 同上 + `PlaybackInfo` | 同 ID 种入后仍须与直连 J 相同；生成到已种入 URL 的视频 302 判 FAIL |
 | `V2-bypass-global-and-overlap` | `PlaybackInfo` + `/Videos/{id}/stream` | 全局 / 重叠客户端保持上游 `Protocol`、无 302；普通客户端仍被改写并 302。`OverlapClient` 必须同时出现在全局表与两个分支表（判定附带 `overlap_client_listed_in`） |
 | `V2-bypass-route-independence` | 同上 | `VideoOnly` 只绕过 Video，`CacheOnly` 仍被改写 |
 | `V2-id-priority-and-uuid` | `/Videos/...` 的 query 与 path 两种写法 | 两个已种入源下 query 覆盖 path，连字符与紧凑 UUID 都命中同一目标；同一 URL 同时带 `MediaSourceId` 与 `mediaSourceId` 且指向不同源时，按产品既有优先级（精确名 `MediaSourceId` 优先）解析，顺序与指向各交换一次 |
@@ -227,3 +227,9 @@ RUN_DIR=artifacts/validation-evidence/S1/s1-1-supplement-<timestamp>
 结果写在 `evidence/supplement-checks.json`（逐项）与 `evidence/supplement-summary.json`
 （汇总、产品 Base、镜像 digest、运行版本、工具身份）。这些记录是真实服务结果，
 不是单元或假上游结果；仍不构成真实客户端（Infuse / Kodi / SenPlayer）兼容结论。
+
+> [!NOTE]
+> 历史 S1.1 运行中的 `V2-raw-after-seeding` 记录的是当时“种入后 302 到媒体地址”的
+> 兼容行为及当时工具预期，保留原结论不重写。当前工具已删除该兼容分流：raw 在种入
+> 前后都只与直连 J 比较，任何代理生成的视频 302 都判 FAIL。复查旧证据时须按运行时的
+> 工具版本理解，不能把旧 PASS 当作当前合同通过。

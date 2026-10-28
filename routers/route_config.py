@@ -33,10 +33,5 @@ ROUTE_RULES: tuple[RouteRule, ...] = (
         pattern=compile(r"^(?:/[Vv]ideos/[^/]+|/video)(?:/.*)?$", flags=0),
         handler_type=HandlerType.VIDEO,
     ),
-    RouteRule(
-        name="emby_danmu_raw",
-        pattern=compile(r"^/(?:emby/)?api/danmu/[^/]+/raw/?$", flags=0),
-        handler_type=HandlerType.VIDEO,
-    ),
     RouteRule(name="default", pattern=compile(r".*", flags=0), handler_type=HandlerType.DEFAULT),
 )

@@ -7,6 +7,17 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
+## Unreleased
+
+- Removed the danmu raw video special case. `/api/danmu/{id}/raw` and
+  `/emby/api/danmu/{id}/raw` are now always forwarded to Jellyfin through the
+  plain HTTP proxy: they no longer look up or use a cached media source mapping,
+  even when the same ID has a valid mapping, and the proxy does not create a
+  video `302` for them. Upstream status, body, `Content-Type` and any
+  upstream-originated `Location` are forwarded as usual. The `/Videos/{id}/...`,
+  `/videos/{id}/...` and `/video/...` redirect and streaming fallback behaviour is
+  unchanged.
+
 ## 1.0.0 - 2026-10-25
 
 - Removed the complete PlaybackInfo JSON response cache. Every PlaybackInfo request

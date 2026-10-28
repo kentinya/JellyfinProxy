@@ -22,6 +22,7 @@ from scripts.validation.common import (
     REQUIRED_SERVER_VERSION,
     ValidationError,
     canonical_json,
+    passthrough_matches_upstream,
     redact,
     redact_text,
     sha256_bytes,
@@ -701,6 +702,81 @@ def test_supplement_digest_helpers_are_stable_and_short() -> None:
     assert first == supplement._digest("http://172.17.0.1:18100/remote-a.mp4")
     assert first != supplement._digest("http://172.17.0.1:18100/remote-b.mp4")
     assert len(first) == 16
+
+
+def test_passthrough_comparison_allows_only_upstream_originated_location() -> None:
+    baseline = {
+        "status": 302,
+        "body_sha256": sha256_bytes(b""),
+        "content_type": "text/plain",
+        "location_digest": url_digest("https://jellyfin.example/upstream"),
+    }
+    assert passthrough_matches_upstream(baseline, baseline)
+
+    generated_media_redirect = {
+        "status": 302,
+        "body_sha256": sha256_bytes(b""),
+        "content_type": "text/plain",
+        "location_digest": url_digest("https://media.example/movie.mkv"),
+    }
+    assert not passthrough_matches_upstream(generated_media_redirect, baseline)
+
+    transparent_error = {
+        "status": 404,
+        "body_sha256": sha256_bytes(b""),
+        "content_type": None,
+        "location_digest": None,
+    }
+    assert passthrough_matches_upstream(transparent_error, transparent_error)
+
+
+def test_supplement_raw_checks_accept_transparent_responses(tmp_path: Path) -> None:
+    from types import SimpleNamespace
+
+    def raw(status, body=b"", location=None):
+        return {
+            "status": status,
+            "location": location,
+            "location_digest": url_digest(location) if location else None,
+            "content_type": None,
+            "body_bytes": len(body),
+            "body_sha256": sha256_bytes(body),
+        }
+
+    class FakeSession:
+        def __init__(self, group, responses):
+            self.group = group
+            self._responses = list(responses)
+
+        def video(self, path):
+            response = dict(self._responses.pop(0))
+            response["path"] = path
+            return response
+
+        def playback_info(self, item_id, client_name="PlainClient"):
+            return {"status": 200, "source_id": item_id}
+
+    transparent = raw(404)
+    recorder = supplement.Recorder(tmp_path / "transparent.json")
+    supplement.check_raw_unseeded(
+        SimpleNamespace(catalog={"remote_two": {"id": "item-id"}}),
+        FakeSession("B-off", [transparent, transparent, transparent, transparent]),
+        recorder,
+        direct_j=FakeSession("J", [transparent] * 10),
+    )
+    assert [check["status"] for check in recorder.checks] == ["PASS"] * 4
+
+    recorder = supplement.Recorder(tmp_path / "redirect.json")
+    redirect = raw(302, location="https://media.example/movie.mkv")
+    supplement.check_raw_unseeded(
+        SimpleNamespace(catalog={"remote_two": {"id": "item-id"}}),
+        FakeSession("B-off", [transparent, transparent, redirect, redirect]),
+        recorder,
+        direct_j=FakeSession("J", [transparent] * 10),
+    )
+    statuses = {check["id"]: check["status"] for check in recorder.checks}
+    assert statuses["V2-raw-after-seeding-raw"] == "FAIL"
+    assert statuses["V2-raw-after-seeding-emby_raw"] == "FAIL"
 
 
 def test_supplement_cli_rejects_unknown_group(tmp_path: Path) -> None:

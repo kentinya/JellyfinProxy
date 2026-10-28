@@ -134,6 +134,11 @@ SupportsTranscoding = false
 这些配置只改变响应中的字段值，实际播放与转码能力仍取决于 Jellyfin 和客户端。
 根字段覆盖、类型和作用范围见 [PlaybackInfo 字段覆盖](docs/configuration.md#playbackinfo-字段覆盖)。
 
+## 🔜 未发布变更
+
+- `/api/danmu/{id}/raw` 与 `/emby/api/danmu/{id}/raw` 不再使用视频直链映射，改为普通
+  代理到 Jellyfin；`/Videos/{id}/...` 等其他视频入口的直链与流式回退保持。
+
 ## 🔄 从 0.9.x 升级到 1.0
 
 - **播放信息每次请求上游**：完整 PlaybackInfo JSON 缓存已撤除；旧缓存配置会被忽略。
