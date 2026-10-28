@@ -134,10 +134,12 @@ SupportsTranscoding = false
 这些配置只改变响应中的字段值，实际播放与转码能力仍取决于 Jellyfin 和客户端。
 根字段覆盖、类型和作用范围见 [PlaybackInfo 字段覆盖](docs/configuration.md#playbackinfo-字段覆盖)。
 
-## 🔜 未发布变更
+## 🔄 从 1.0.0 升级到 1.0.1
 
 - `/api/danmu/{id}/raw` 与 `/emby/api/danmu/{id}/raw` 不再使用视频直链映射，改为普通
   代理到 Jellyfin；`/Videos/{id}/...` 等其他视频入口的直链与流式回退保持。
+- 原先依赖 raw 路径视频重定向的客户端将收到 Jellyfin 的普通响应；请确认客户端使用的
+  播放入口。[升级说明](docs/configuration.md#从-100-升级到-101)包含具体影响。
 
 ## 🔄 从 0.9.x 升级到 1.0
 

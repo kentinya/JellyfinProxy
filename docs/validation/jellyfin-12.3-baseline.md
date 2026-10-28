@@ -24,7 +24,8 @@ S1 已于 2026-10-25 获[独立 A 最终 PASS / CLOSED](../../Task/archive/S1-re
 - 合同要求固定 **Jellyfin Server 12.3**；其他版本、`latest` 或网页版本号一律拒绝。
 - 工具记录组：`J`（当前工具实际经观测入口，不能当作独立直连证据）、`B-on`（固定 Slice Base，原默认缓存开启）、
   `B-off`（同一 Base，仅关闭 JSON 缓存）。三者使用同一服务器、同一素材、同一客户端策略。
-- S1.1 基线证据：[`artifacts/validation-evidence/S1/s1-1-baseline-20261025-05`](../../artifacts/validation-evidence/S1/s1-1-baseline-20261025-05)。
+- S1.1 基线证据：`artifacts/validation-evidence/S1/s1-1-baseline-20261025-05/`
+  （仅在原工作区可读，未随 GitHub 仓库发布）。
 
 ## 1. 前置条件
 
@@ -230,6 +231,6 @@ RUN_DIR=artifacts/validation-evidence/S1/s1-1-supplement-<timestamp>
 
 > [!NOTE]
 > 历史 S1.1 运行中的 `V2-raw-after-seeding` 记录的是当时“种入后 302 到媒体地址”的
-> 兼容行为及当时工具预期，保留原结论不重写。当前工具已删除该兼容分流：raw 在种入
+> 兼容行为及当时工具预期，保留原结论不重写。1.0.1 撤除了该兼容分流，当前工具预期为 raw 在种入
 > 前后都只与直连 J 比较，任何代理生成的视频 302 都判 FAIL。复查旧证据时须按运行时的
 > 工具版本理解，不能把旧 PASS 当作当前合同通过。

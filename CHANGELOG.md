@@ -7,7 +7,7 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
-## Unreleased
+## 1.0.1 - 2026-10-28
 
 - Removed the danmu raw video special case. `/api/danmu/{id}/raw` and
   `/emby/api/danmu/{id}/raw` are now always forwarded to Jellyfin through the
@@ -16,7 +16,8 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
   video `302` for them. Upstream status, body, `Content-Type` and any
   upstream-originated `Location` are forwarded as usual. The `/Videos/{id}/...`,
   `/videos/{id}/...` and `/video/...` redirect and streaming fallback behaviour is
-  unchanged.
+  unchanged. Clients relying on raw-path video redirects now receive Jellyfin's
+  ordinary response instead; this intentionally removes that compatibility path.
 
 ## 1.0.0 - 2026-10-25
 
