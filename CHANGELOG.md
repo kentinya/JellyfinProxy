@@ -7,14 +7,20 @@ All notable changes to JellyfinProxy are recorded here. Versions follow
 - MINOR: backward-compatible features.
 - PATCH: backward-compatible fixes.
 
-## Unreleased
+## 2.0.0 - 2026-10-29
 
+- **Breaking change:** video direct-URL handling no longer accepts legacy
+  `/video/...`, playlist, HLS, subtitle or arbitrary `/Videos/{id}/...` paths.
+  Only the two stream formats listed below use the video handler; excluded
+  paths still reach Jellyfin through the ordinary proxy. This incompatible
+  routing change is the reason for the major version, not the documentation cleanup.
 - Video `HEAD` requests to `/Videos/{id}/stream` and
   `/Videos/{id}/stream.{container}` are now forwarded to Jellyfin with the
   original `HEAD` method. They no longer look up a cached media source mapping
-  or return a video `302`; upstream status and applicable response headers are
-  preserved without a response body. `GET` redirect, fallback, invalidation and
-  recovery behaviour is unchanged.
+  or generate a media direct-URL `302`; upstream status and applicable response
+  headers, including upstream-originated redirects, are preserved without a
+  response body. `GET` redirect, fallback, invalidation and recovery behaviour
+  is unchanged.
 - Video special handling is now limited to `GET` / `HEAD` on the two exact
   stream path formats. `Videos` and `stream` remain case-insensitive, and
   multi-dot containers such as `stream.mp4.extra` are accepted. Other paths,

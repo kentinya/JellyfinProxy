@@ -2,8 +2,8 @@
 
 **面向 Jellyfin 的远程媒体直链代理。**
 
-部署在客户端与 Jellyfin 之间，从播放信息中记录远程媒体地址，让后续视频请求通过
-`302` 重定向直连媒体；没有可用直链时，继续由 Jellyfin 提供内容。
+部署在客户端与 Jellyfin 之间，从播放信息中记录远程媒体地址，让后续视频 `GET` 请求通过
+`302` 重定向直连媒体；视频 `HEAD`、没有可用直链或选择绕过时，继续由 Jellyfin 响应。
 
 [下载 Release](https://github.com/kentinya/JellyfinProxy/releases) ·
 [快速开始](#-快速开始) · [配置说明](docs/configuration.md) · [更新记录](CHANGELOG.md)
@@ -134,31 +134,23 @@ SupportsTranscoding = false
 这些配置只改变响应中的字段值，实际播放与转码能力仍取决于 Jellyfin 和客户端。
 根字段覆盖、类型和作用范围见 [PlaybackInfo 字段覆盖](docs/configuration.md#playbackinfo-字段覆盖)。
 
-## 🔄 未发布变更
+## 🔄 从 1.x 升级到 2.0.0
 
-- 视频 `HEAD` 请求（`/Videos/{id}/stream` 与 `/Videos/{id}/stream.{container}`）始终按
-  HEAD 透传 Jellyfin，不再查询直链映射或返回 302；GET 的直链命中、回退和失效恢复不变。
-- 视频特殊处理只作用于上述两种路径的 GET / HEAD，`Videos` 与 `stream` 不区分大小写；
-  `/video/...`、`master.m3u8`、HLS、字幕及其他子路径改为普通代理，即使携带
-  `MediaSourceId` 也不会产生视频 302。
-- 视频 GET / HEAD 会在应用日志中记录实际处理方式、映射命中情况和响应状态；新增日志
-  不记录查询参数、Cookie 或直链地址。
+> [!IMPORTANT]
+> 视频直链入口已收紧。依赖旧 `/video/...`、播放列表、HLS 或字幕入口直链的客户端，
+> 升级后会收到 Jellyfin 的普通代理响应，请确认客户端使用的播放路径。
 
-## 🔄 从 1.0.0 升级到 1.0.1
+- 只有 `/Videos/{id}/stream` 和 `/Videos/{id}/stream.{container}` 的 **GET** 使用直链映射；
+  `Videos` / `stream` 大小写不敏感。GET 的映射失效、流式回退与恢复保持不变。
+- 两种入口的 **HEAD** 按原方法回源，不查映射、不生成媒体直链 302；Jellyfin 自身的
+  重定向与错误仍可透传，保留适用响应头且客户端不收到正文。
+- 视频 GET / HEAD 新增处理结果日志，记录处理方式、映射情况和响应状态，不记录查询参数、
+  Cookie 或直链地址。响应状态不代表播放完成。
+- 无需新增配置；客户端绕过优先级和 PlaybackInfo 字段覆盖规则不变。
 
-- `/api/danmu/{id}/raw` 与 `/emby/api/danmu/{id}/raw` 不再使用视频直链映射，改为普通
-  代理到 Jellyfin；`/Videos/{id}/...` 等其他视频入口的直链与流式回退保持。
-- 原先依赖 raw 路径视频重定向的客户端将收到 Jellyfin 的普通响应；请确认客户端使用的
-  播放入口。[升级说明](docs/configuration.md#从-100-升级到-101)包含具体影响。
-
-## 🔄 从 0.9.x 升级到 1.0
-
-- **播放信息每次请求上游**：完整 PlaybackInfo JSON 缓存已撤除；旧缓存配置会被忽略。
-- **字段改为显式配置**：不再自动改写 `Protocol="File"` 或禁用转码声明。需要旧效果时，
-  使用上面的配置。
-- **直链和流式回退保留**：删除的是播放信息正文缓存，用于视频重定向的地址映射仍然存在。
-
-完整迁移说明见[升级说明](docs/configuration.md#从-09x-升级)，版本历史见 [CHANGELOG](CHANGELOG.md)。
+完整路径边界与迁移建议见 [2.0.0 升级说明](docs/configuration.md#从-1x-升级到-200)。
+从更早版本升级还需核对 [1.0.1 的 raw 入口变化](docs/configuration.md#从-100-升级到-101)
+和 [0.9.x 的缓存与字段变化](docs/configuration.md#从-09x-升级)；历史发布事实见 [CHANGELOG](CHANGELOG.md)。
 
 ## 📚 文档与开发
 

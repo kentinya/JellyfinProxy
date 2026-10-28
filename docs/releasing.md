@@ -20,21 +20,23 @@ Python 版本为 3.11；每个架构都运行全部 pytest 回归，以及冻结
 ## 发布步骤
 
 1. 确认当前准备发布的实现、配置、版本与变更记录；未实施草案不记作已交付修复。
-2. 若需要新产品版本，先更新唯一版本来源 `version.py` 及 `CHANGELOG.md`。
-   发布已有版本时不因发布设施或流程文档的变化自动升级版本号。
+2. 若需要新产品版本，先更新唯一版本来源 `version.py` 及 `CHANGELOG.md`，同步当前
+   升级说明并写明兼容影响。按变更记录声明的 SemVer 选择版本；例如 2.0.0 的主版本
+   来自已审查的旧视频直链入口收紧，不是本次文档治理。纯发布设施 / 文档变化不自动升版。
+   已发布标签和版本不可重用或覆盖；下方以新版本 `v2.0.0` 为例。
 3. 运行 `.venv/bin/python -m pytest` 和 `git diff --check`。
 4. 按当前机器架构本地验证打包，例如：
 
    ```bash
-   .venv/bin/python scripts/build_release.py --tag v1.0.1 --arch amd64
+   .venv/bin/python scripts/build_release.py --tag v2.0.0 --arch amd64
    ```
 
 5. 提交并推送明确属于发布的文件，然后对该提交创建与 `version.py` 一致的标签：
 
    ```bash
    git push origin main
-   git tag -a v1.0.1 <完整发布提交SHA> -m "Release v1.0.1"
-   git push origin refs/tags/v1.0.1
+   git tag -a v2.0.0 <完整发布提交SHA> -m "Release v2.0.0"
+   git push origin refs/tags/v2.0.0
    ```
 
 6. 检查 `Build and Publish Release` 工作流成功，核对 Release 页面上两个压缩包和
