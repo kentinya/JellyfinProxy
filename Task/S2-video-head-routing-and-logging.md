@@ -7,23 +7,23 @@
 ```text
 Slice ID: S2
 Owner: A
-Status: ACTIVE
+Status: READY FOR A REVIEW
 Planned On: 2026-10-28
 Activated On: 2026-10-28
 Contract Revision: 2 — retain essential outcomes and acceptance
 Revised On: 2026-10-28
 Base SHA: 3f997b53128305dd4e25b616b0794408ffefa859
 Contract Checkpoint: 88b5c25e40b2c4ee1139ed4458cc303e949666cb
-Implementation Head: NOT SET
+Implementation Head: a2f7d46afc1339d3a3b91e57c7fa1db29749580f
 Required Test Level: T4 — related tests and existing full regression; additional checks by actual impact
-Independent B Review: PENDING
+Independent B Review: PASS — S2.1 / RO-1～3, 2026-10-29
 A Final Review: PENDING
 ```
 
 Base 保持规划时的真实源码，产品版本仍为 `1.0.1`，纯文档修订不使 Base 前移。
 首个 [S2.1 计划](S2.1-video-request-handling-and-logging.md)已于 2026-10-28
-激活；Developer 已完成实现、测试和文档同步，当前为 READY FOR B REVIEW，实现候选为
-`a2f7d46afc1339d3a3b91e57c7fa1db29749580f`，独立 B / A 决定仍为 PENDING。
+激活；Developer 已完成实现、测试和文档同步，2026-10-29 独立 B 审查 PASS，
+实现 Head 为 `a2f7d46afc1339d3a3b91e57c7fa1db29749580f`；全部 RO 已重评，A 最终审查 PENDING。
 Contract Checkpoint 已从 Git 解析，并由纯文档后继补记；
 后续 B 计划以本修订为准，不以最初激活提交代替当前合同。
 
@@ -136,12 +136,12 @@ B 按真实调用链将三项结果合并为一个可整体审查的 Task，不�
 
 | Task | 范围与结果映射 | 当前状态 |
 | --- | --- | --- |
-| [S2.1 — 视频请求处理与日志](S2.1-video-request-handling-and-logging.md) | HEAD 透传、GET 保留、精确路由、结果日志及必要回归 / 文档；RO-1～3、AC-1～5 | READY FOR B REVIEW（实现候选 `a2f7d46`），独立 B 决定 PENDING |
+| [S2.1 — 视频请求处理与日志](S2.1-video-request-handling-and-logging.md) | HEAD 透传、GET 保留、精确路由、结果日志及必要回归 / 文档；RO-1～3、AC-1～5 | PASS（实现 Head `a2f7d46`），独立 B 审查与 RO-1～3 重评完成 |
 
 原修订 1 的 S2.1～S2.3 是未发布建议，已由上述实际计划替代。B 在 S2.1 独立 PASS 后
 重评全部 RO：满足则整理 Closure Packet 交 A；有实际缺口才规划修正或下一必要 Task。
-当前根 [TASK](../TASK.md) 指向 READY FOR B REVIEW 的 S2.1；实现候选为 `a2f7d46`，
-独立 B 决定仍为 PENDING，A 最终审查待 B 完成后进行。
+当前根 [TASK](../TASK.md) 已撤下活动实施入口，保留 S2.1 PASS 记录链接；不追加 Task，
+本 Slice 为 READY FOR A REVIEW，A 最终审查仍为 PENDING。
 
 ## 修订记录
 
@@ -155,14 +155,38 @@ B 按真实调用链将三项结果合并为一个可整体审查的 Task，不�
 
 ## Closure Packet
 
-- Base：`3f997b53128305dd4e25b616b0794408ffefa859`；Implementation Head：NOT SET
-  （S2.1 实现候选 `a2f7d46afc1339d3a3b91e57c7fa1db29749580f`，待独立 B / A 决定）。
-- 全部 RO 对照与独立 B 决定：PENDING；本地验证证据见
-  `artifacts/validation-evidence/S2/S2.1/20261029T001128-run1/`；真实 Jellyfin / 客户端 /
-  部署 / 打包 NOT RUN。
-- 不变量 / P2 / 延期：待独立 B 审查；无已确认的延期结果。
-- 真实 Jellyfin / 实机客户端 / 打包 / 生产部署：NOT RUN，本次不新增此类操作要求。
-- 文档与状态协调：修订 2，ACTIVE；当前 Task S2.1 为 READY FOR B REVIEW；最终交付协调 PENDING。
+2026-10-29 由独立 B 整理；不改变修订 2 的合同内容，不代签 A 最终决定。
+
+- Slice Base：`3f997b53128305dd4e25b616b0794408ffefa859`。
+- Implementation Head：`a2f7d46afc1339d3a3b91e57c7fa1db29749580f`。
+- Task Base：`3e6554645dc096e5a2b517b2050c4f8aa21505b7`；唯一 Task
+  [S2.1 计划、完成报告与独立 B 审查](S2.1-video-request-handling-and-logging.md#b-review-result)：PASS。
+- 文档后继：`798a42ea340a6b5a33fcf134634a0fa004c07900`、
+  `bf2266155a81e6fdafb6e12c964fef0c25c33204`，以及本轮 B 审查文档；未改变可执行输入。
+
+| Required Outcome | B 重评 | 证据与交付 |
+| --- | --- | --- |
+| RO-1 HEAD 回源、GET 保留 | PASS | S2.1 AC-1 / AC-2；HEAD 不查映射、保留方法与表示头；B 经同一应用验证 GET 命中 → 失效回退 → 恢复、全局 / Video 绕过；既有 ID / UUID 回归通过 |
+| RO-2 视频日志 | PASS | S2.1 AC-3；真实应用请求 ID 自动关联，HEAD / 命中 / 未命中 / 两类绕过 / 上游自身 302 日志含义正确，认证与媒体地址不泄漏、不改业务响应 |
+| RO-3 精确入口 | PASS | S2.1 AC-4；仅两种 stream 格式的 GET/HEAD，关键词大小写不敏感、container 可含点；其他入口带有效映射仍普通回源，其他方法与 PlaybackInfo 保持 |
+
+- 最终门槛 / AC-5：B 独立 `.venv/bin/python -m pytest -q` 为 291 passed、exit 0；
+  独立应用入口复现 PASS（9 个 MockTransport 事务、4 个媒体流关闭、7 条关联结果）。
+  底层 HTTP / 流式代理 / 缓存与策略未改，不恢复已撤除的额外网络取证门槛。
+- 证据：`artifacts/validation-evidence/S2/S2.1/20261029-b-review/`，以及 Developer
+  `artifacts/validation-evidence/S2/S2.1/20261029T001128-run1/`；仅本机可读、未跟踪未推送。
+- 不变量：全局绕过优先、PlaybackInfo / Video 策略分工、GET ID 顺序与规范化、映射失效
+  及恢复保持；不恢复正文缓存、不读取 STRM / ffprobe / 数据库、不新增依赖或配置。
+  无 P0 / P1 阻塞，无延期产品结果。
+- P2：交付目录未找到 Developer 首次夹具失败的原始日志，仅有失败摘要；B 已独立重跑
+  关键入口和完整回归，不据此伪称复核过历史 traceback，不新建修复 Task。
+- 兼容影响：旧 `/video`、master / HLS / 字幕等退出视频重定向是合同预期，说明已同步。
+  新日志中的状态表示取得响应，不表示完成播放。
+- 真实 Jellyfin / 实机客户端 / Uvicorn 网络 / 打包 / 生产部署 / 性能：NOT RUN。
+  本地假上游不构成真实兼容结论；这些项目不是修订 2 的额外门槛。
+- 文档与状态：Task PASS，根 TASK 无活动实施任务；Slice READY FOR A REVIEW，
+  A Final Review PENDING。README / configuration / CHANGELOG Unreleased 已核对；
+  `version.py` 保持 1.0.1，尚未发布。最终档案迁移由 A 收尾协调。
 
 ## A Final Review
 
@@ -175,4 +199,5 @@ Closure Reconciliation: PENDING
 Next Action: NONE — AUTHORIZED WORK COMPLETE
 ```
 
-本轮 Task 激活授权已完成，不表示产品已实现或验收；后续由 Developer 按 S2.1 计划实施。
+本轮 B 审查与交接授权已完成；后续由 A 审完整 Slice Base..Implementation Head，
+核对用户结果和本 Closure Packet。B 不启动新实施，也不代签 A 的 PASS / CLOSED。
