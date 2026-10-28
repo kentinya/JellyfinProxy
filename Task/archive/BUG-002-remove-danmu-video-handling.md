@@ -1,13 +1,16 @@
 # Task BUG-002 — 删除两个 danmu raw 入口的视频特殊处理
 
-遵循[开发流程](../docs/development-workflow.md)和
-[B 角色指南](../docs/agent-experience/task-planner-reviewer.md)，当前入口见[根 TASK](../TASK.md)。
+> 历史归档；原路径：`Task/BUG-002-remove-danmu-video-handling.md`。计划、激活及
+> Developer 报告保留各阶段事实；当前最终决定见文末 B Review Result。
+
+遵循[开发流程](../../docs/development-workflow.md)和
+[B 角色指南](../../docs/agent-experience/task-planner-reviewer.md)，当前入口见[根 TASK](../../TASK.md)。
 
 ```text
 Task ID: BUG-002
 Work Type: BUGFIX
 Parent Slice: N/A — standalone bug
-Status: READY FOR B REVIEW
+Status: PASS
 Task Base: e4695d81596642363be8219441037da881f8a1ff
 Contract Checkpoint: N/A — standalone bug
 Plan Checkpoint: e10e1b66f2bb04bb62dff7df40ff93faea27570b
@@ -159,6 +162,8 @@ git diff --check
 
 ## Developer Completion Report
 
+以下为 Developer 交接时的自检、待审状态和证据；独立审查结果见下一节。
+
 ### Changed Files / Implemented
 
 - `routers/route_config.py`：删除 `emby_danmu_raw` 的 `VIDEO` 规则；两个 raw 入口（带
@@ -220,13 +225,62 @@ git diff --check
 
 ## B Review Result
 
+独立审查日期：2026-10-28。本轮 B 未承担该范围的产品实现；审查完整 Base..Head，
+核对全部 13 个变更文件、现有入口调用链、原始证据和文档后继。
+
 ```text
-Reviewed Range: NOT SET
-Reviewer / Independence: NOT SET
-Decision: PENDING
-Acceptance / Required Outcomes all satisfied: PENDING — Developer 自检仅到 READY FOR B REVIEW
-Slice Required Outcomes all satisfied: N/A — standalone bug
-Evidence / Reuse / NOT RUN: 本地证据见 `artifacts/validation-evidence/BUG-002/20261028T133242Z-dev/`；真实 Jellyfin / 客户端 / 部署 NOT RUN
-Blockers / Remaining Risks: 独立 B 审查未开始；不承诺 403 或客户端兼容结果
-Next: 独立 B 审查 `Task Base..e205dbf366dce6bd5174c3e1ce0b33bb413fc05e` 并逐项核对 AC-1～7
+Reviewed Range: e4695d81596642363be8219441037da881f8a1ff..e205dbf366dce6bd5174c3e1ce0b33bb413fc05e
+Reviewer / Independence: B — 本轮独立审查者，未承担该范围产品实现
+Decision: PASS
+Acceptance / Required Outcomes all satisfied: YES — AC-1～7，限本 Task 的本地验收边界
+Slice Required Outcomes all satisfied: N/A — standalone bug；根 SLICE 无活动合同
+Documentation Successor: e8feb1daae0c7d7b705857b1954aa5a023a073b8，仅 TASK 与完成报告更新，无可执行输入变化
+Evidence / Reuse / NOT RUN: 见下方证据与限制
+Blockers: NONE
+Remaining Risks: 原 raw 视频 302 兼容行为已按授权撤除；真实客户端及 403 结果未验证
+Next Action: NONE — AUTHORIZED WORK COMPLETE
 ```
+
+### 全部验收复核
+
+| AC | 独立结论 | 证据 / 核对结果 |
+| --- | --- | --- |
+| AC-1 | PASS | 删除 raw 路由后经既有 Router / Dispatcher 走 DEFAULT；独立 HTTP 探测覆盖两个前缀与 7 种既有方法、尾斜杠及两种查询参数。有效映射下 raw 的缓存 get 调用为零 |
+| AC-2 | PASS | 两个 raw 在无映射与 PlaybackInfo 种入有效映射后均实际访问本地 HTTP 上游；raw 不消费或替换映射，真正视频随后仍 302 命中原地址 |
+| AC-3 | PASS | 独立探测保留上游 200 XML、404、401、403、500 和自身 302 的状态 / 正文 / Content-Type / Location；HEAD 无正文且保留表示长度。探测全部 40 个流响应均关闭 |
+| AC-4 | PASS | 真实 HTTP 转发链核对编码路径 / 查询、Range 206、Authorization 哨兵及 SenPlayer / 全局 / Video 绕过身份；沿现有普通代理规则工作。日志脱敏实现未改，完整回归证据含既有日志测试；本轮证据不输出认证值 |
+| AC-5 | PASS | `/Videos`、`/videos`、`/video` 命中；未命中及两类绕过回退 206；PlaybackInfo 无效 Path 清理映射后回退、重新有效后恢复 302。聚焦测试复核 query 优先级、UUID、流式表示头及释放；相关策略与服务无产品变更 |
+| AC-6 | PASS | 完整 diff 核对路由与 raw 旧 302 用例已换为透传合同；RJ-05 / RJ-10 比较直连基线并检查上游事务，V2 比较种入前后基线。独立聚焦测试确认比较器接受上游自身 302、拒绝错误 Location，V2 将种入后错误视频 302 判 FAIL。当前说明同步，历史档案未改写 |
+| AC-7 | PASS | 源码 / 原始日志 / 首次失败 / 全回归身份均已核对，独立关键复现通过；本节完成 B 审查。真实服务、客户端、403 及部署限制保持 NOT RUN，不扩大结论 |
+
+### 证据、复用与测试耗时
+
+本轮证据：`artifacts/validation-evidence/BUG-002/20261028-b-review/`。
+交付证据：`artifacts/validation-evidence/BUG-002/20261028T133242Z-dev/`。
+两者均为本工作区可读的未跟踪文件，未提交或推送；仅克隆仓库无法取得原始日志。
+
+- `audit.json`：Base / Plan 为候选祖先；交付 `candidate.diff` 与完整审查范围逐字节相同；
+  11 个产品 / 测试 / 工具 / 说明文件的证据摘要同时匹配 Implementation Head 与工作区。
+  审查开始时工作区相对候选仅有已提交的 TASK / 完成报告后继。
+- 复用完整回归：交付的 `.venv/bin/python -m pytest` 原始日志为 **255 passed**，exit 0，
+  5.94s；核对 Python / pytest / FastAPI / httpx / Starlette 版本一致。首次未修复基线
+  **41 failed / 2 passed**、exit 1 的日志保留，不抹去失败。
+- 独立运行：`.venv/bin/python artifacts/validation-evidence/BUG-002/20261028-b-review/http_probe.py`
+  → **PASS**，43 项检查，43 个上游事务，40 个流响应关闭；含完整真实 HTTP 客户端和
+  隔离本地假上游，入口均来自 Task 与现有路由。耗时 3.382s（进程墙钟）。
+- 独立聚焦：`.venv/bin/python -m pytest tests/test_core.py tests/test_real_jellyfin_validation.py -k 'danmu or routes or video or bypass or proxy or stream or restores_redirect or passthrough or supplement_raw' -q`
+  → **74 passed / 136 deselected**，exit 0，pytest 1.01s、进程墙钟 1.689s。
+  deselected 为明确聚焦选择，其余回归复用完整运行；既有 Starlette TestClient 弃用提示 1 条。
+- 本轮两次测试进程墙钟合计 **5.071s**；`timing.json` 以测试开始至收尾记录的保守计时
+  区间计算占比，低于本轮 50% 限制，且未把此前代码审查时间计入分母。
+- 收尾只修改审查和归档文档；检查本地链接 / 锚点、角色与状态、完整补丁空白，
+  原始结果见 `closure-checks.log`。无新的可执行输入，不重复完整产品测试。
+
+### 收尾与限制
+
+无 P0 / P1 阻塞，无需追加实施 Task。根 TASK 撤下活动任务，本记录移入历史索引；
+没有活动 Slice，不生成 A 最终审查或 Slice Closure Packet。
+
+真实 Jellyfin / Emby / SenPlayer、生产部署、403 验证、性能与打包：**NOT RUN**，
+按原合同不在本次自动执行范围。本地 HTTP / 单元通过不构成真实客户端兼容结论。
+产品行为说明已随实现同步 Unreleased；版本保持 `version.py` 的现值，未发布或推送。

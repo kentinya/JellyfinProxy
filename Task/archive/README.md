@@ -11,6 +11,7 @@
 
 | 记录 | 范围 | 已有最终决定 |
 | --- | --- | --- |
+| [BUG-002](BUG-002-remove-danmu-video-handling.md#b-review-result) | 删除两个 danmu raw 视频特殊入口，普通 HTTP 透传及真正视频回归 | 独立 B PASS，2026-10-28 |
 | [BUG-001](BUG-001-media-source-cache-invalidation.md) | 同一媒体源无效 Path 清理旧直链及回退 / 恢复 | 独立 B PASS，2026-10-24 |
 | [Slice S1](S1-remove-playback-info-json-cache.md#a-final-review) | 删除完整 JSON 缓存、按配置覆盖字段、真实服务验证 | 独立 A PASS / CLOSED，2026-10-25 |
 | [S1.1](S1.1-real-jellyfin-12.3-baseline.md) | 改前真实 Jellyfin 12.3 基线及补证 | 独立 B PASS，2026-10-25 |
